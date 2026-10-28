@@ -1,0 +1,15 @@
+[project]
+name = "quickparse"
+version = "1.4.0"
+description = "A tiny, dependency-free parser for config files."
+requires-python = ">=3.10"
+license = "MIT"
+
+[project.urls]
+Documentation = "https://quickparse.readthedocs.io"
+
+[tool.ruff]
+line-length = 100
+
+[tool.readme-style]
+repo = "acme/quickparse"

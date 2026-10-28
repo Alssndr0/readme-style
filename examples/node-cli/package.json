@@ -1,0 +1,10 @@
+{
+  "name": "tidy-cli",
+  "version": "2.1.0",
+  "description": "Format and lint Markdown tables from the terminal.",
+  "license": "MIT",
+  "bin": { "tidy": "bin/tidy.js" },
+  "engines": { "node": ">=18" },
+  "repository": { "type": "git", "url": "git+https://github.com/acme/tidy-cli.git" },
+  "homepage": "https://github.com/acme/tidy-cli#readme"
+}

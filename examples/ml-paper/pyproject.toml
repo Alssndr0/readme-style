@@ -1,0 +1,9 @@
+[project]
+name = "sparseflow"
+version = "0.3.0"
+description = "Efficient diffusion transformers with learned sparsity."
+requires-python = ">=3.10"
+license = "Apache-2.0"
+
+[tool.readme-style]
+repo = "acme-lab/sparseflow"

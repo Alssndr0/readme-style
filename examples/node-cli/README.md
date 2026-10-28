@@ -1,0 +1,56 @@
+tidy-cli
+========
+
+Format and lint the Markdown tables in your docs from the terminal.
+
+`tidy` aligns columns, normalizes separators and flags rows with the wrong number of
+cells, so tables stay readable in plain text and render correctly on GitHub.
+
+## Install
+
+```sh
+npm install -g tidy-cli
+```
+
+## Usage
+
+```sh
+tidy README.md
+tidy --check "docs/**/*.md"
+```
+
+> ⚠️ **Warning:** `tidy` rewrites files in place. Commit first, or use `--check`.
+
+## Options
+
+| Flag | Description |
+|------|-------------|
+| `--check` | Exit with code 1 instead of writing |
+| `--align <left\|center>` | Column alignment for header cells |
+| `--max-width <n>` | Wrap cells longer than `n` characters |
+
+## FAQ
+
+### Does it support GitHub tables?
+
+Yes, including escaped pipes and inline code inside cells.
+
+### Can I run it in CI?
+
+Yes. `tidy --check` exits with code 1 when a table would change, and prints a diff.
+
+### Does it touch anything outside tables?
+
+No. Everything outside a table is left byte for byte as it was.
+
+### Which Node versions work?
+
+Node 18 and newer.
+
+## Contributing
+
+Bug reports and pull requests are welcome. Join the chat on [Discord](https://discord.gg/acme-tidy).
+
+## License
+
+MIT

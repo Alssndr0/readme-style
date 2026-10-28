@@ -1,0 +1,12 @@
+- id: readme-style
+  name: readme-style
+  description: Upgrade a README's presentation without changing its words.
+  entry: readme-style --write
+  language: python
+  files: (?i)(^|/)readme\.(md|markdown)$
+- id: readme-style-check
+  name: readme-style (check only)
+  description: Fail when a README is not styled.
+  entry: readme-style --check
+  language: python
+  files: (?i)(^|/)readme\.(md|markdown)$

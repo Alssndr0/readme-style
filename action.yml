@@ -1,0 +1,45 @@
+name: readme-style
+description: Keep your README's words, upgrade its presentation. Check or apply readme-style in CI.
+branding:
+  icon: book-open
+  color: purple
+inputs:
+  path:
+    description: README files or folders, separated by spaces.
+    default: .
+  theme:
+    description: Theme to apply. Defaults to the config, then to the theme recorded in the README.
+    default: ""
+  mode:
+    description: '"check" fails when a README is not styled; "write" applies the changes (commit them in a later step).'
+    default: check
+  python-version:
+    description: Python used to run readme-style.
+    default: "3.12"
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+    - name: Install readme-style
+      shell: bash
+      run: python -m pip install --quiet "$ACTION_PATH"
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+    - name: Run readme-style
+      shell: bash
+      env:
+        RS_PATHS: ${{ inputs.path }}
+        RS_THEME: ${{ inputs.theme }}
+        RS_MODE: ${{ inputs.mode }}
+      run: |
+        args=(--color always)
+        if [ -n "$RS_THEME" ]; then args+=(--theme "$RS_THEME"); fi
+        case "$RS_MODE" in
+          check) args+=(--check) ;;
+          write) args+=(--write) ;;
+          *) echo "::error::mode must be check or write, got '$RS_MODE'"; exit 2 ;;
+        esac
+        read -ra paths <<< "$RS_PATHS"
+        readme-style "${args[@]}" "${paths[@]}"
