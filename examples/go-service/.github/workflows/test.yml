@@ -1,0 +1,13 @@
+name: Test
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+      - run: go test -race -coverprofile=coverage.out ./...
+      - uses: codecov/codecov-action@v4

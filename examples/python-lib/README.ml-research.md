@@ -14,7 +14,7 @@ A tiny, dependency-free parser for config files that never surprises you.
 <!-- readme-style:header theme=ml-research -->
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white&style=flat) [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat)](LICENSE)
 
-**[Features](#features)** · **[Installation](#installation)** · **[Usage](#usage)** · **[Contributing](#contributing)** · **[License](#license)** · **[Docs](https://quickparse.readthedocs.io)**
+**[Features](#features)** · **[Installation](#installation)** · **[Usage](#usage)** · **[Configuration](#configuration)** · **[Contributing](#contributing)** · **[Docs](https://quickparse.readthedocs.io)**
 <!-- /readme-style:header -->
 
 </div><!-- /readme-style:center -->

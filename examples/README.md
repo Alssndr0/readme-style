@@ -1,6 +1,6 @@
 # Before and after
 
-Three fictional projects, each styled with every built-in theme. For each one: what changed, the rendered result, and the diff (the exact edits readme-style made; everything else is untouched).
+Four fictional projects, each styled with every built-in theme. For each one: what changed, the rendered result, and the diff (the exact edits readme-style made; everything else is untouched).
 
 The projects do not exist, so their dynamic badges (versions, CI status) render as "not found".
 
@@ -94,7 +94,7 @@ A Python library with a changelog, a logo pair, a CI workflow and a release work
 +<!-- readme-style:header theme=startup -->
 +[![PyPI version](https://img.shields.io/pypi/v/quickparse?logo=pypi&logoColor=white&style=for-the-badge)](https://pypi.org/project/quickparse/) [![PyPI downloads](https://img.shields.io/pypi/dm/quickparse?style=for-the-badge)](https://pypistats.org/packages/quickparse) [![CI](https://img.shields.io/github/actions/workflow/status/acme/quickparse/ci.yml?label=CI&logo=github&style=for-the-badge)](https://github.com/acme/quickparse/actions/workflows/ci.yml) [![Coverage](https://img.shields.io/codecov/c/github/acme/quickparse?logo=codecov&style=for-the-badge)](https://codecov.io/gh/acme/quickparse) [![Documentation](https://img.shields.io/badge/docs-online-0A7BBB?style=for-the-badge)](https://quickparse.readthedocs.io) [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
 +
-+**[Features](#features)** · **[Installation](#installation)** · **[Usage](#usage)** · **[Contributing](#contributing)** · **[License](#license)** · **[Docs](https://quickparse.readthedocs.io)**
++**[Features](#features)** · **[Installation](#installation)** · **[Usage](#usage)** · **[Configuration](#configuration)** · **[Contributing](#contributing)** · **[Docs](https://quickparse.readthedocs.io)**
 +
 +---
 +<!-- /readme-style:header -->
@@ -160,7 +160,7 @@ A Python library with a changelog, a logo pair, a CI workflow and a release work
 +<!-- readme-style:header theme=ml-research -->
 +![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white&style=flat) [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat)](LICENSE)
 +
-+**[Features](#features)** · **[Installation](#installation)** · **[Usage](#usage)** · **[Contributing](#contributing)** · **[License](#license)** · **[Docs](https://quickparse.readthedocs.io)**
++**[Features](#features)** · **[Installation](#installation)** · **[Usage](#usage)** · **[Configuration](#configuration)** · **[Contributing](#contributing)** · **[Docs](https://quickparse.readthedocs.io)**
 +<!-- /readme-style:header -->
 +
 +</div><!-- /readme-style:center -->
@@ -243,7 +243,7 @@ A Python library with a changelog, a logo pair, a CI workflow and a release work
 +<!-- readme-style:header theme=cli -->
 +[![PyPI version](https://img.shields.io/pypi/v/quickparse?logo=pypi&logoColor=white&labelColor=1f2328&color=3d444d&style=flat-square)](https://pypi.org/project/quickparse/) [![CI](https://img.shields.io/github/actions/workflow/status/acme/quickparse/ci.yml?label=CI&logo=github&labelColor=1f2328&color=3d444d&style=flat-square)](https://github.com/acme/quickparse/actions/workflows/ci.yml) ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3d444d?logo=python&logoColor=white&labelColor=1f2328&style=flat-square) [![License: MIT](https://img.shields.io/badge/license-MIT-3d444d?labelColor=1f2328&style=flat-square)](LICENSE)
 +
-+<kbd>[Features](#features)</kbd> <kbd>[Installation](#installation)</kbd> <kbd>[Usage](#usage)</kbd> <kbd>[Contributing](#contributing)</kbd> <kbd>[License](#license)</kbd> <kbd>[Docs](https://quickparse.readthedocs.io)</kbd>
++<kbd>[Features](#features)</kbd> <kbd>[Installation](#installation)</kbd> <kbd>[Usage](#usage)</kbd> <kbd>[Configuration](#configuration)</kbd> <kbd>[Contributing](#contributing)</kbd> <kbd>[Docs](https://quickparse.readthedocs.io)</kbd>
 +<!-- /readme-style:header -->
 +
 +</div><!-- /readme-style:center -->
@@ -863,5 +863,345 @@ A Node command-line tool with a setext title, a FAQ, a Discord link and a logo p
  
  ## Options
 ````
+
+</details>
+
+## go-service
+
+A Go library with a long reference-style README: options, API, benchmarks and a changelog. [Original README](go-service/README.md).
+
+| Theme | What changed | Rendered |
+|-------|--------------|----------|
+| `minimal` | callouts, header with badges (go, ci, license), contents | [view](go-service/README.minimal.md) |
+| `startup` | callouts, header with badges (go, ci, codecov, license), folded sections, centered | [view](go-service/README.startup.md) |
+| `ml-research` | callouts, header with badges (go-version, license), contents, folded sections, centered | [view](go-service/README.ml-research.md) |
+| `cli` | callouts, header with badges (go, ci, go-version, license), centered | [view](go-service/README.cli.md) |
+| `docs` | callouts, header with badges (go, ci, codecov, license), contents, back-to-top links | [view](go-service/README.docs.md) |
+
+<details>
+<summary><code>minimal</code>: the diff</summary>
+
+```diff
+--- README.md
++++ README.minimal.md
+@@ -1,4 +1,8 @@
+ # kvlite
+ 
++<!-- readme-style:header theme=minimal -->
++[![Go reference](https://img.shields.io/badge/go-reference-007D9C?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/acme/kvlite) [![Test](https://img.shields.io/github/actions/workflow/status/acme/kvlite/test.yml?label=Test&logo=github&style=flat-square)](https://github.com/acme/kvlite/actions/workflows/test.yml) [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square)](LICENSE)
++<!-- /readme-style:header -->
++
+ An embedded key-value store for Go that survives power loss.
+ 
+@@ -7,4 +11,27 @@
+ dependencies outside the standard library.
+ 
++<!-- readme-style:toc theme=minimal -->
++**Contents**
++
++- [Features](#features)
++- [Installation](#installation)
++- [Quick start](#quick-start)
++- [Configuration](#configuration)
++  - [Durability](#durability)
++  - [Compaction](#compaction)
++  - [Encryption](#encryption)
++- [API](#api)
++  - [Open and Close](#open-and-close)
++  - [Get and Put](#get-and-put)
++  - [Delete](#delete)
++  - [Iterate](#iterate)
++  - [Transactions](#transactions)
++- [Benchmarks](#benchmarks)
++- [FAQ](#faq)
++- [Changelog](#changelog)
++- [Contributing](#contributing)
++- [License](#license)
++<!-- /readme-style:toc -->
++
+ ## Features
+ 
+@@ -56,5 +83,6 @@
+ never corrupted either way.
+ 
+-> **Important:** network file systems may acknowledge `fsync` before data reaches the disk. Keep the
++> [!IMPORTANT]
++> network file systems may acknowledge `fsync` before data reaches the disk. Keep the
+ > database on local storage.
+ 
+@@ -72,5 +100,6 @@
+ Pass a 32-byte key to encrypt values and keys at rest. The key is never written to the file.
+ 
+-**Caution:** losing the key makes the data unrecoverable. kvlite cannot help you get it back.
++> [!CAUTION]
++> losing the key makes the data unrecoverable. kvlite cannot help you get it back.
+ 
+ ## API
+```
+
+</details>
+
+<details>
+<summary><code>startup</code>: the diff</summary>
+
+```diff
+--- README.md
++++ README.startup.md
+@@ -1,6 +1,18 @@
++<div align="center"><!-- readme-style:center -->
++
+ # kvlite
+ 
+ An embedded key-value store for Go that survives power loss.
+ 
++<!-- readme-style:header theme=startup -->
++[![Go reference](https://img.shields.io/badge/go-reference-007D9C?logo=go&logoColor=white&style=for-the-badge)](https://pkg.go.dev/github.com/acme/kvlite) [![Test](https://img.shields.io/github/actions/workflow/status/acme/kvlite/test.yml?label=Test&logo=github&style=for-the-badge)](https://github.com/acme/kvlite/actions/workflows/test.yml) [![Coverage](https://img.shields.io/codecov/c/github/acme/kvlite?logo=codecov&style=for-the-badge)](https://codecov.io/gh/acme/kvlite) [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue?style=for-the-badge)](LICENSE)
++
++**[Features](#features)** · **[Installation](#installation)** · **[Quick start](#quick-start)** · **[Configuration](#configuration)** · **[API](#api)** · **[Benchmarks](#benchmarks)**
++
++---
++<!-- /readme-style:header -->
++
++</div><!-- /readme-style:center -->
++
+ kvlite keeps your data in a single file, writes through an append-only log, and recovers to the last
+ committed transaction after a crash. It has no background goroutines you need to manage and no
+@@ -56,5 +68,6 @@
+ never corrupted either way.
+ 
+-> **Important:** network file systems may acknowledge `fsync` before data reaches the disk. Keep the
++> [!IMPORTANT]
++> network file systems may acknowledge `fsync` before data reaches the disk. Keep the
+ > database on local storage.
+ 
+@@ -72,5 +85,6 @@
+ Pass a 32-byte key to encrypt values and keys at rest. The key is never written to the file.
+ 
+-**Caution:** losing the key makes the data unrecoverable. kvlite cannot help you get it back.
++> [!CAUTION]
++> losing the key makes the data unrecoverable. kvlite cannot help you get it back.
+ 
+ ## API
+@@ -142,4 +156,6 @@
+ ## Changelog
+ 
++<details><summary>Click to expand</summary><!-- readme-style:collapse -->
++
+ ### v1.3.0
+ 
+@@ -160,4 +176,6 @@
+ - First stable release
+ 
++</details><!-- /readme-style:collapse -->
++
+ ## Contributing
+ 
+```
+
+</details>
+
+<details>
+<summary><code>ml-research</code>: the diff</summary>
+
+```diff
+--- README.md
++++ README.ml-research.md
+@@ -1,10 +1,46 @@
++<div align="center"><!-- readme-style:center -->
++
+ # kvlite
+ 
+ An embedded key-value store for Go that survives power loss.
+ 
++<!-- readme-style:header theme=ml-research -->
++![Go 1.22+](https://img.shields.io/badge/go-1.22%2B-00ADD8?logo=go&logoColor=white&style=flat) [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat)](LICENSE)
++
++**[Features](#features)** · **[Installation](#installation)** · **[Quick start](#quick-start)** · **[Configuration](#configuration)** · **[API](#api)** · **[Benchmarks](#benchmarks)**
++<!-- /readme-style:header -->
++
++</div><!-- /readme-style:center -->
++
+ kvlite keeps your data in a single file, writes through an append-only log, and recovers to the last
+ committed transaction after a crash. It has no background goroutines you need to manage and no
+ dependencies outside the standard library.
+ 
++<!-- readme-style:toc theme=ml-research -->
++<details>
++<summary><b>Table of Contents</b></summary>
++
++- [Features](#features)
++- [Installation](#installation)
++- [Quick start](#quick-start)
++- [Configuration](#configuration)
++  - [Durability](#durability)
++  - [Compaction](#compaction)
++  - [Encryption](#encryption)
++- [API](#api)
++  - [Open and Close](#open-and-close)
++  - [Get and Put](#get-and-put)
++  - [Delete](#delete)
++  - [Iterate](#iterate)
++  - [Transactions](#transactions)
++- [Benchmarks](#benchmarks)
++- [FAQ](#faq)
++- [Changelog](#changelog)
++- [Contributing](#contributing)
++- [License](#license)
++
++</details>
++<!-- /readme-style:toc -->
++
+ ## Features
+ 
+@@ -56,5 +92,6 @@
+ never corrupted either way.
+ 
+-> **Important:** network file systems may acknowledge `fsync` before data reaches the disk. Keep the
++> [!IMPORTANT]
++> network file systems may acknowledge `fsync` before data reaches the disk. Keep the
+ > database on local storage.
+ 
+@@ -72,5 +109,6 @@
+ Pass a 32-byte key to encrypt values and keys at rest. The key is never written to the file.
+ 
+-**Caution:** losing the key makes the data unrecoverable. kvlite cannot help you get it back.
++> [!CAUTION]
++> losing the key makes the data unrecoverable. kvlite cannot help you get it back.
+ 
+ ## API
+@@ -142,4 +180,6 @@
+ ## Changelog
+ 
++<details><summary>Click to expand</summary><!-- readme-style:collapse -->
++
+ ### v1.3.0
+ 
+@@ -160,4 +200,6 @@
+ - First stable release
+ 
++</details><!-- /readme-style:collapse -->
++
+ ## Contributing
+ 
+```
+
+</details>
+
+<details>
+<summary><code>cli</code>: the diff</summary>
+
+```diff
+--- README.md
++++ README.cli.md
+@@ -1,6 +1,16 @@
++<div align="center"><!-- readme-style:center -->
++
+ # kvlite
+ 
+ An embedded key-value store for Go that survives power loss.
+ 
++<!-- readme-style:header theme=cli -->
++[![Go reference](https://img.shields.io/badge/go-reference-3d444d?logo=go&logoColor=white&labelColor=1f2328&style=flat-square)](https://pkg.go.dev/github.com/acme/kvlite) [![Test](https://img.shields.io/github/actions/workflow/status/acme/kvlite/test.yml?label=Test&logo=github&labelColor=1f2328&color=3d444d&style=flat-square)](https://github.com/acme/kvlite/actions/workflows/test.yml) ![Go 1.22+](https://img.shields.io/badge/go-1.22%2B-3d444d?logo=go&logoColor=white&labelColor=1f2328&style=flat-square) [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-3d444d?labelColor=1f2328&style=flat-square)](LICENSE)
++
++<kbd>[Features](#features)</kbd> <kbd>[Installation](#installation)</kbd> <kbd>[Quick start](#quick-start)</kbd> <kbd>[Configuration](#configuration)</kbd> <kbd>[API](#api)</kbd> <kbd>[Benchmarks](#benchmarks)</kbd>
++<!-- /readme-style:header -->
++
++</div><!-- /readme-style:center -->
++
+ kvlite keeps your data in a single file, writes through an append-only log, and recovers to the last
+ committed transaction after a crash. It has no background goroutines you need to manage and no
+@@ -56,5 +66,6 @@
+ never corrupted either way.
+ 
+-> **Important:** network file systems may acknowledge `fsync` before data reaches the disk. Keep the
++> [!IMPORTANT]
++> network file systems may acknowledge `fsync` before data reaches the disk. Keep the
+ > database on local storage.
+ 
+@@ -72,5 +83,6 @@
+ Pass a 32-byte key to encrypt values and keys at rest. The key is never written to the file.
+ 
+-**Caution:** losing the key makes the data unrecoverable. kvlite cannot help you get it back.
++> [!CAUTION]
++> losing the key makes the data unrecoverable. kvlite cannot help you get it back.
+ 
+ ## API
+```
+
+</details>
+
+<details>
+<summary><code>docs</code>: the diff</summary>
+
+```diff
+--- README.md
++++ README.docs.md
+@@ -1,4 +1,8 @@
+ # kvlite
+ 
++<!-- readme-style:header theme=docs -->
++[![Go reference](https://img.shields.io/badge/go-reference-007D9C?logo=go&logoColor=white&style=flat)](https://pkg.go.dev/github.com/acme/kvlite) [![Test](https://img.shields.io/github/actions/workflow/status/acme/kvlite/test.yml?label=Test&logo=github&style=flat)](https://github.com/acme/kvlite/actions/workflows/test.yml) [![Coverage](https://img.shields.io/codecov/c/github/acme/kvlite?logo=codecov&style=flat)](https://codecov.io/gh/acme/kvlite) [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat)](LICENSE)
++<!-- /readme-style:header -->
++
+ An embedded key-value store for Go that survives power loss.
+ 
+@@ -7,4 +11,27 @@
+ dependencies outside the standard library.
+ 
++<!-- readme-style:toc theme=docs -->
++**Table of Contents**
++
++- [Features](#features)
++- [Installation](#installation)
++- [Quick start](#quick-start)
++- [Configuration](#configuration)
++  - [Durability](#durability)
++  - [Compaction](#compaction)
++  - [Encryption](#encryption)
++- [API](#api)
++  - [Open and Close](#open-and-close)
++  - [Get and Put](#get-and-put)
++  - [Delete](#delete)
++  - [Iterate](#iterate)
++  - [Transactions](#transactions)
++- [Benchmarks](#benchmarks)
++- [FAQ](#faq)
++- [Changelog](#changelog)
++- [Contributing](#contributing)
++- [License](#license)
++<!-- /readme-style:toc -->
++
+ ## Features
+ 
+@@ -56,5 +83,6 @@
+ never corrupted either way.
+ 
+-> **Important:** network file systems may acknowledge `fsync` before data reaches the disk. Keep the
++> [!IMPORTANT]
++> network file systems may acknowledge `fsync` before data reaches the disk. Keep the
+ > database on local storage.
+ 
+@@ -72,5 +100,10 @@
+ Pass a 32-byte key to encrypt values and keys at rest. The key is never written to the file.
+ 
+-**Caution:** losing the key makes the data unrecoverable. kvlite cannot help you get it back.
++> [!CAUTION]
++> losing the key makes the data unrecoverable. kvlite cannot help you get it back.
++
++<!-- readme-style:back-to-top theme=docs -->
++<p align="right"><a href="#kvlite">Back to top ↑</a></p>
++<!-- /readme-style:back-to-top -->
+ 
+ ## API
+@@ -120,4 +153,8 @@
+ A transaction that conflicts with a concurrent one returns `kvlite.ErrConflict`; retry it.
+ 
++<!-- readme-style:back-to-top theme=docs -->
++<p align="right"><a href="#kvlite">Back to top ↑</a></p>
++<!-- /readme-style:back-to-top -->
++
+ ## Benchmarks
+ 
+```
 
 </details>

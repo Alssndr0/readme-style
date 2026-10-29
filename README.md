@@ -83,7 +83,7 @@ theme that extends a built-in one. See [docs/themes.md](docs/themes.md).
 
 ## Before and after
 
-[examples/](examples/README.md) shows three projects styled with every theme: what changed, the
+[examples/](examples/README.md) shows four projects styled with every theme: what changed, the
 rendered result and the exact diff. On a research repository, for instance, `ml-research` adds a
 centered header with arXiv, project page, Hugging Face, Colab, Python and license badges (inferred
 from links the README already had), a folded table of contents and a folded news section, and turns

@@ -14,7 +14,7 @@ A tiny, dependency-free parser for config files that never surprises you.
 <!-- readme-style:header theme=cli -->
 [![PyPI version](https://img.shields.io/pypi/v/quickparse?logo=pypi&logoColor=white&labelColor=1f2328&color=3d444d&style=flat-square)](https://pypi.org/project/quickparse/) [![CI](https://img.shields.io/github/actions/workflow/status/acme/quickparse/ci.yml?label=CI&logo=github&labelColor=1f2328&color=3d444d&style=flat-square)](https://github.com/acme/quickparse/actions/workflows/ci.yml) ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3d444d?logo=python&logoColor=white&labelColor=1f2328&style=flat-square) [![License: MIT](https://img.shields.io/badge/license-MIT-3d444d?labelColor=1f2328&style=flat-square)](LICENSE)
 
-<kbd>[Features](#features)</kbd> <kbd>[Installation](#installation)</kbd> <kbd>[Usage](#usage)</kbd> <kbd>[Contributing](#contributing)</kbd> <kbd>[License](#license)</kbd> <kbd>[Docs](https://quickparse.readthedocs.io)</kbd>
+<kbd>[Features](#features)</kbd> <kbd>[Installation](#installation)</kbd> <kbd>[Usage](#usage)</kbd> <kbd>[Configuration](#configuration)</kbd> <kbd>[Contributing](#contributing)</kbd> <kbd>[Docs](https://quickparse.readthedocs.io)</kbd>
 <!-- /readme-style:header -->
 
 </div><!-- /readme-style:center -->

@@ -14,7 +14,7 @@ A tiny, dependency-free parser for config files that never surprises you.
 <!-- readme-style:header theme=startup -->
 [![PyPI version](https://img.shields.io/pypi/v/quickparse?logo=pypi&logoColor=white&style=for-the-badge)](https://pypi.org/project/quickparse/) [![PyPI downloads](https://img.shields.io/pypi/dm/quickparse?style=for-the-badge)](https://pypistats.org/packages/quickparse) [![CI](https://img.shields.io/github/actions/workflow/status/acme/quickparse/ci.yml?label=CI&logo=github&style=for-the-badge)](https://github.com/acme/quickparse/actions/workflows/ci.yml) [![Coverage](https://img.shields.io/codecov/c/github/acme/quickparse?logo=codecov&style=for-the-badge)](https://codecov.io/gh/acme/quickparse) [![Documentation](https://img.shields.io/badge/docs-online-0A7BBB?style=for-the-badge)](https://quickparse.readthedocs.io) [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
 
-**[Features](#features)** · **[Installation](#installation)** · **[Usage](#usage)** · **[Contributing](#contributing)** · **[License](#license)** · **[Docs](https://quickparse.readthedocs.io)**
+**[Features](#features)** · **[Installation](#installation)** · **[Usage](#usage)** · **[Configuration](#configuration)** · **[Contributing](#contributing)** · **[Docs](https://quickparse.readthedocs.io)**
 
 ---
 <!-- /readme-style:header -->

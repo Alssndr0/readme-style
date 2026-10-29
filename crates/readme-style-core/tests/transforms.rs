@@ -320,6 +320,31 @@ fn nav_prefers_well_known_sections() {
 }
 
 #[test]
+fn nav_puts_how_to_use_it_before_the_closing_sections() {
+    let names = [
+        "Features",
+        "Installation",
+        "Configuration",
+        "API",
+        "Benchmarks",
+        "FAQ",
+        "Changelog",
+        "Contributing",
+        "License",
+    ];
+    let readme: String = std::iter::once("# T\n\n".to_owned())
+        .chain(names.iter().map(|n| format!("## {n}\n\n")))
+        .collect();
+    let out = run(&readme, "startup");
+    let nav = out.lines().find(|l| l.starts_with("**[")).expect("a nav bar");
+    assert_eq!(
+        nav,
+        "**[Features](#features)** · **[Installation](#installation)** · **[Configuration](#configuration)** · \
+         **[API](#api)** · **[Benchmarks](#benchmarks)** · **[FAQ](#faq)**"
+    );
+}
+
+#[test]
 fn a_readme_without_a_title_keeps_its_hero_first() {
     let project = ProjectFacts {
         license: Some("MIT".into()),

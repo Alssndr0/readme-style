@@ -110,7 +110,7 @@ difference with its line in the original.
 | Unit tests | next to the code | Each module's behavior, including slugs, markers, editing and inspection. |
 | Transform tests | `crates/readme-style-core/tests/transforms.rs` | Each feature, through the public API. |
 | Guarantee tests | `crates/readme-style-core/tests/guarantees.rs` | Idempotency, theme switching, line endings; property tests over generated READMEs, well-formed (never refused) and adversarial (never a crash, never unstable output). |
-| Gallery | `examples/`, `crates/readme-style-core/tests/examples.rs` | Snapshots of every theme on three projects. |
+| Gallery | `examples/`, `crates/readme-style-core/tests/examples.rs` | Snapshots of every theme on four projects. |
 | CLI tests | `tests/cli.rs` | The binary: modes, exit codes, configuration, JSON, CRLF. |
 | Corpus | `cargo xtask corpus` | About 140 popular READMEs, every theme, every theme switch: no refusals, no instability, no drift. |
 

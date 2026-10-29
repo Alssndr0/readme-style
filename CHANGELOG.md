@@ -12,6 +12,13 @@ All notable changes are listed here. The format follows
   OpenAI-compatible server such as a local vLLM) for a tagline or a Mermaid architecture diagram and
   print the suggestions. Configured with flags, the environment, or an `[ai]` table (provider and
   model only: a repository cannot choose where your key is sent).
+- A before-and-after gallery in `examples/`: four projects, every theme, what changed and the diff.
+
+### Changed
+
+- When a nav bar has more sections than room, it prefers where to start and how to use the project
+  (install, usage, configuration, API), then benchmarks, results and FAQ, then contributing and
+  license.
 
 ### Fixed
 

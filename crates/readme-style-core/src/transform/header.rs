@@ -11,12 +11,16 @@ use crate::edit::Editor;
 use crate::outline::is_toc_title;
 use crate::theme::{HeaderPosition, NavStyle};
 
-/// Sections a nav bar prefers when there are more than it has room for.
-static NAV_PRIORITY: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(
-        r"(?i)^\W*(?:features?|highlights|overview|why\b.*|install(?:ation|ing)?|setup|getting started|quick ?start|usage|how to use|examples?|demo|tutorial|documentation|docs|benchmarks?|results|performance|evaluation|models?|checkpoints|datasets?|model zoo|citation|cite|citing|contribut\w*|faq|frequently asked questions|licen[cs]e)\W*$",
-    )
-    .expect("valid regex")
+/// Sections a nav bar prefers when there are more than it has room for, most wanted first:
+/// where to start and how to use it, then what the project shows, then the sections every
+/// README ends with.
+static NAV_TIERS: LazyLock<[Regex; 3]> = LazyLock::new(|| {
+    [
+        r"features?|highlights|overview|why\b.*|install(?:ation|ing)?|setup|getting started|quick ?start|usage|how to use|examples?|demo|tutorial|documentation|docs|api(?: reference)?|reference|configuration|config",
+        r"benchmarks?|results|performance|evaluation|models?|checkpoints|datasets?|model zoo|citation|cite|citing|faq|frequently asked questions",
+        r"contribut\w*|licen[cs]e",
+    ]
+    .map(|names| Regex::new(&format!(r"(?i)^\W*(?:{names})\W*$")).expect("valid regex"))
 });
 static DOCS_SECTION: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?i)^\W*(documentation|docs)\W*$").expect("valid regex"));
@@ -63,6 +67,13 @@ fn nav_item(style: NavStyle, text: &str, target: &str) -> String {
     }
 }
 
+fn nav_tier(title: &str) -> usize {
+    NAV_TIERS
+        .iter()
+        .position(|tier| tier.is_match(title))
+        .unwrap_or(NAV_TIERS.len())
+}
+
 fn nav_bar(doc: &Document, cx: &Context<'_>) -> Option<String> {
     let settings = &cx.theme.nav;
     let mut sections: Vec<&Heading> = doc
@@ -78,20 +89,10 @@ fn nav_bar(doc: &Document, cx: &Context<'_>) -> Option<String> {
         .filter(|_| !sections.iter().any(|h| DOCS_SECTION.is_match(&h.text)));
     let room = settings.max.saturating_sub(usize::from(docs.is_some()));
     if sections.len() > room {
-        let mut picked: Vec<&Heading> = sections
-            .iter()
-            .copied()
-            .filter(|h| NAV_PRIORITY.is_match(&h.text))
-            .take(room)
-            .collect();
-        let rest: Vec<&Heading> = sections
-            .iter()
-            .copied()
-            .filter(|h| !picked.iter().any(|p| p.start == h.start))
-            .collect();
-        picked.extend(rest.into_iter().take(room - picked.len()));
-        picked.sort_by_key(|h| h.start);
-        sections = picked;
+        // A stable sort keeps document order within a tier.
+        sections.sort_by_key(|h| nav_tier(&h.text));
+        sections.truncate(room);
+        sections.sort_by_key(|h| h.start);
     }
     let mut items: Vec<String> = sections
         .iter()
