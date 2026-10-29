@@ -1,0 +1,46 @@
+# Defaults every theme starts from. A theme lists only what it changes, and can extend
+# another theme with `extends = "name"`. Configuration overrides use the same tables.
+
+description = ""
+
+[layout]
+align = "left"                  # left | center
+header-position = "after-title" # after-title | after-tagline
+divider = false                 # a horizontal rule under the header
+tagline-from-metadata = false   # show the package description when the README has no tagline
+
+[logo]
+show = false
+width = 120
+dark-variants = true            # give an existing logo a dark-mode <picture> variant
+
+[badges]
+include = ["package", "ci", "license"]
+exclude = []
+style = "flat-square"           # flat | flat-square | for-the-badge | plastic | social
+max = 6
+
+[nav]
+show = false
+max = 6
+style = "bold"                  # bold | plain | kbd
+separator = " · "
+
+[toc]
+style = "list"                  # none | list | details
+depth = 2
+min-sections = 4
+title = "Contents"
+
+[callouts]
+enabled = true                  # "**Note:** ..." becomes a GitHub alert
+
+[collapse]
+sections = []                   # regular expressions matched against section titles
+min-lines = 12
+label = "Click to expand"
+
+[back-to-top]
+enabled = false
+min-lines = 25                  # only after sections at least this long
+label = "Back to top"

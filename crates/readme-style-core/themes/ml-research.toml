@@ -1,0 +1,25 @@
+description = "A paper-style header: arXiv, Hugging Face and Colab badges, a nav bar, collapsible news."
+
+[layout]
+align = "center"
+header-position = "after-tagline"
+tagline-from-metadata = true
+
+[logo]
+show = true
+
+[badges]
+include = ["research", "runtime", "license", "community"]
+style = "flat"
+max = 7
+
+[nav]
+show = true
+
+[toc]
+style = "details"
+title = "Table of Contents"
+
+[collapse]
+sections = ['change ?log', 'changes', 'release notes', 'release history', 'history', 'news', 'updates', "what'?s new"]
+min-lines = 8

@@ -1,0 +1,28 @@
+description = "For command-line tools: a centered header, monochrome badges and keyboard-key navigation."
+
+[layout]
+align = "center"
+header-position = "after-tagline"
+tagline-from-metadata = true
+
+[logo]
+show = true
+width = 100
+
+[badges]
+include = ["package", "ci", "runtime", "license"]
+style = "flat-square"
+max = 5
+label-color = "1f2328"
+color = "3d444d"
+
+[nav]
+show = true
+style = "kbd"
+separator = " "
+
+[toc]
+style = "none"
+
+[collapse]
+sections = ['change ?log', 'changes', 'release notes', 'release history', 'history', 'news', 'updates', "what'?s new", 'faq', 'frequently asked questions']

@@ -1,0 +1,21 @@
+description = "For long READMEs: a full table of contents, back-to-top links and collapsible release notes."
+
+[logo]
+show = true
+width = 80
+
+[badges]
+include = ["package", "ci", "coverage", "docs", "license"]
+style = "flat"
+
+[toc]
+depth = 3
+min-sections = 3
+title = "Table of Contents"
+
+[collapse]
+sections = ['change ?log', 'changes', 'release notes', 'release history', 'history']
+
+[back-to-top]
+enabled = true
+min-lines = 20

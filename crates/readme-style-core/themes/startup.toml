@@ -1,0 +1,24 @@
+description = "A centered hero with logo, tagline, bold badges and a section nav bar."
+
+[layout]
+align = "center"
+header-position = "after-tagline"
+divider = true
+tagline-from-metadata = true
+
+[logo]
+show = true
+
+[badges]
+include = ["package", "downloads", "ci", "coverage", "docs", "license", "community"]
+style = "for-the-badge"
+
+[nav]
+show = true
+
+[toc]
+style = "none"
+
+[collapse]
+sections = ['change ?log', 'changes', 'release notes', 'release history', 'history', 'news', 'updates', "what'?s new", 'faq', 'frequently asked questions']
+min-lines = 10
