@@ -128,6 +128,17 @@ rebuilt from scratch each time. Switching themes gives the same result as stylin
 with the new theme, and later runs reuse the theme recorded in the markers, so `--check` needs no
 configuration. [docs/architecture.md](docs/architecture.md) explains the design.
 
+## Limits
+
+- Markdown only: `README.rst` and other formats are left alone.
+- Content between markers belongs to readme-style and is rewritten on every run.
+- Switching themes can leave a blank line where a removed region was; blank lines between blocks do
+  not change how GitHub renders the README.
+- HTML that never closes a tag swallows whatever follows it, on GitHub as in a browser, so no change
+  next to it is safe: readme-style refuses, and names the line, until the tag is closed.
+- Dynamic badges (versions, CI status) come from shields.io and only work for public repositories and
+  published packages; that is why registry badges need evidence of publishing.
+
 ## Configuration
 
 Optional. Put it in `.readme-style.toml`, `[tool.readme-style]` in `pyproject.toml`,
