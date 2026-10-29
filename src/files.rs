@@ -25,30 +25,44 @@ pub(crate) fn find_readme(path: &Path) -> Option<PathBuf> {
     path.is_file().then(|| path.to_path_buf())
 }
 
+/// The file a README path names, after symbolic links, provided it lies in the repository the
+/// path itself is in (and not inside `.git`). A link in a cloned repository, to the README or
+/// to a folder above it, must not point readme-style at a file elsewhere: not to rewrite it,
+/// and not to print it in a diff.
+pub(crate) fn resolve_readme(path: &Path) -> io::Result<PathBuf> {
+    let target = fs::canonicalize(path)?;
+    let lexical = std::path::absolute(path)?;
+    let folder = lexical.parent().unwrap_or(Path::new("/"));
+    let root = fs::canonicalize(find_root(&OsFs, folder))?;
+    let inside = target.strip_prefix(&root).is_ok_and(|rest| {
+        rest.components()
+            .next()
+            .is_none_or(|first| first.as_os_str() != ".git")
+    });
+    if inside {
+        Ok(target)
+    } else {
+        Err(io::Error::other(format!(
+            "it leads to {}, outside the repository at {}; run readme-style on that file directly if you mean to",
+            target.display(),
+            root.display()
+        )))
+    }
+}
+
 /// Replace the README at `path` with `content`; `original` is what was read from it.
 ///
-/// - A symbolic link is followed, so the file it points to is updated and the link stays, but
-///   only when that file is in the link's repository: a README in a cloned repository must not
-///   be able to aim the write at a file elsewhere.
+/// - Only a file [`resolve_readme`] accepts is written, and only if the file itself is writable.
 /// - The content first goes to a temporary file with a fresh, unpredictable name (never an
-///   existing path, so nothing planted there is followed). A full disk or a file size limit
-///   therefore stops the write before the README is touched.
-/// - A file with several hard links is then rewritten in place, since replacing it would detach
-///   the others, and put back as it was if that fails. Any other file is replaced atomically by
-///   renaming the temporary file over it.
+///   existing path, so nothing planted there is followed). A full disk therefore stops the write
+///   before the README is touched.
+/// - That file then replaces the README atomically, with its permissions, owner and group. When
+///   it cannot take them (another owner, a group we are not in), or the README has other hard
+///   links that a replacement would detach, the README is rewritten in place instead, and put
+///   back as it was if that fails.
 pub(crate) fn write_readme(path: &Path, content: &str, original: &str) -> io::Result<()> {
-    let target = fs::canonicalize(path)?;
-    if fs::symlink_metadata(path)?.file_type().is_symlink() {
-        let folder = path.parent().filter(|p| !p.as_os_str().is_empty());
-        let root = find_root(&OsFs, &fs::canonicalize(folder.unwrap_or(Path::new(".")))?);
-        if !target.starts_with(&root) {
-            return Err(io::Error::other(format!(
-                "it links to {}, outside {}; style that file directly if you mean to",
-                target.display(),
-                root.display()
-            )));
-        }
-    }
+    let target = resolve_readme(path)?;
+    drop(OpenOptions::new().write(true).open(&target)?);
     let folder = target
         .parent()
         .ok_or_else(|| io::Error::other("the README has no parent folder"))?;
@@ -61,7 +75,7 @@ pub(crate) fn write_readme(path: &Path, content: &str, original: &str) -> io::Re
         .tempfile_in(folder)?;
     temp.write_all(content.as_bytes())?;
     temp.as_file().sync_all()?;
-    if hard_linked(&target)? {
+    if hard_linked(&target)? || !takes_ownership(temp.as_file(), &target)? {
         // The space it took is now free for the rewrite.
         drop(temp);
         return rewrite_in_place(&target, content, original);
@@ -70,6 +84,22 @@ pub(crate) fn write_readme(path: &Path, content: &str, original: &str) -> io::Re
         .set_permissions(fs::metadata(&target)?.permissions())?;
     temp.persist(&target).map_err(|e| e.error)?;
     Ok(())
+}
+
+/// Whether `temp` has, or could be given, the owner and group of `target`.
+#[cfg(unix)]
+fn takes_ownership(temp: &fs::File, target: &Path) -> io::Result<bool> {
+    use std::os::unix::fs::{MetadataExt as _, fchown};
+    let (ours, theirs) = (temp.metadata()?, fs::metadata(target)?);
+    if ours.uid() != theirs.uid() {
+        return Ok(false);
+    }
+    Ok(ours.gid() == theirs.gid() || fchown(temp, None, Some(theirs.gid())).is_ok())
+}
+
+#[cfg(not(unix))]
+fn takes_ownership(_: &fs::File, _: &Path) -> io::Result<bool> {
+    Ok(true)
 }
 
 /// Overwrite `target` with `content`, restoring `original` if the write fails part way.

@@ -231,6 +231,51 @@ fn a_symlink_out_of_the_repository_is_not_written_through() {
 
 #[cfg(unix)]
 #[test]
+fn links_never_lead_out_of_the_repository() {
+    let outside = TempDir::new().expect("temp dir");
+    fs::write(outside.path().join("README.md"), README).expect("outside readme");
+    fs::write(outside.path().join("secret.env"), "API_TOKEN=do-not-print\n").expect("secret");
+    // A folder link above the README.
+    let dir = project(&[]);
+    std::os::unix::fs::symlink(outside.path(), dir.path().join("docs")).expect("folder link");
+    cli()
+        .arg("--write")
+        .arg(dir.path().join("docs"))
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains("outside the repository"));
+    assert_eq!(read(&outside.path().join("README.md")), README);
+    // Reading for a diff, too.
+    let dir = project(&[]);
+    std::os::unix::fs::symlink(outside.path().join("secret.env"), dir.path().join("README.md"))
+        .expect("link");
+    cli()
+        .arg("--check")
+        .arg(dir.path())
+        .assert()
+        .code(2)
+        .stdout(predicate::str::contains("do-not-print").not())
+        .stderr(predicate::str::contains("will not read"));
+    // And into .git.
+    let dir = project(&[(".git/hooks/pre-commit", "#!/bin/sh\n")]);
+    std::os::unix::fs::symlink(".git/hooks/pre-commit", dir.path().join("README.md")).expect("link");
+    cli().arg("--write").arg(dir.path()).assert().code(2);
+    assert_eq!(read(&dir.path().join(".git/hooks/pre-commit")), "#!/bin/sh\n");
+}
+
+#[cfg(unix)]
+#[test]
+fn a_read_only_readme_is_not_replaced() {
+    use std::os::unix::fs::PermissionsExt as _;
+    let dir = project(&[("README.md", README)]);
+    let readme = dir.path().join("README.md");
+    fs::set_permissions(&readme, fs::Permissions::from_mode(0o444)).expect("read-only");
+    cli().arg("--write").arg(dir.path()).assert().code(2);
+    assert_eq!(read(&readme), README);
+}
+
+#[cfg(unix)]
+#[test]
 fn a_planted_temporary_file_is_never_followed() {
     let outside = TempDir::new().expect("temp dir");
     let victim = outside.path().join("precious.txt");

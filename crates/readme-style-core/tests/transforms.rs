@@ -50,9 +50,16 @@ fn callout_text_keeps_its_meaning() {
         // ... and the guard's parser as a paragraph start, where this would be a definition.
         (
             "**Note:** [foo]: https://example.com",
-            "> [!NOTE]\n> \\[foo]: https://example.com",
+            "> [!NOTE]\n> [foo]\\: https://example.com",
         ),
-        ("**Note:** [^1]: see below", "> [!NOTE]\n> \\[^1]: see below"),
+        ("**Note:** [^1]: see below", "> [!NOTE]\n> [^1]\\: see below"),
+        ("**Note:** -|", "> [!NOTE]\n> \\-|"),
+        // A block right after a lead-in alone stays that block, inside the alert.
+        (
+            "> **Warning:**\n> - The format changed.\n> - Migrate first.",
+            "> [!WARNING]\n> - The format changed.\n> - Migrate first.",
+        ),
+        ("> **Note:**\n> # Heading", "> [!NOTE]\n> # Heading"),
         // Two trailing spaces are a line break, and stay one.
         ("**Note:** text  \nmore", "> [!NOTE]\n> text  \n> more"),
     ];
@@ -69,6 +76,13 @@ fn callout_text_keeps_its_meaning() {
         html,
         "raw HTML at the start of a line would change meaning"
     );
+}
+
+#[test]
+fn a_reference_link_after_a_lead_in_stays_a_link() {
+    let readme = "# Proj\n\n**Note:** [Windows]: run it under WSL.\n\n[Windows]: https://learn.microsoft.com/windows/wsl\n";
+    let out = run(readme, "minimal");
+    assert!(out.contains("> [Windows]\\: run it under WSL."), "{out}");
 }
 
 #[test]
@@ -145,6 +159,30 @@ fn nothing_is_placed_between_a_paragraph_and_its_table() {
             "{theme}:\n{out}"
         );
     }
+}
+
+#[test]
+fn emoji_in_titles_do_not_hide_what_they_say() {
+    // ❤️ and ⚖️ end with a variation selector, which counts as part of a word.
+    let names = [
+        "❤️ Contributing",
+        "⚖️ License",
+        "🛠️ Installation",
+        "Design",
+        "Internals",
+        "Ideas",
+        "Plugins",
+        "Ecosystem",
+    ];
+    let readme: String = std::iter::once("# T\n\n".to_owned())
+        .chain(names.iter().map(|n| format!("## {n}\n\n")))
+        .collect();
+    let nav = run(&readme, "startup");
+    let nav = nav.lines().find(|l| l.starts_with("**[")).expect("a nav bar");
+    assert!(nav.contains("Installation") && nav.contains("Ecosystem"), "{nav}");
+    assert!(!nav.contains("Contributing") && !nav.contains("License"), "{nav}");
+    let own_toc = "# T\n\n## 🗂️ Table of Contents\n\n- [A](#a)\n- [B](#b)\n\n## A\n\n## B\n\n## C\n";
+    assert!(!run(own_toc, "docs").contains("readme-style:toc"));
 }
 
 #[test]

@@ -7,11 +7,20 @@ const SKIP = new Set([
   ".tox", ".nox", ".mypy_cache", ".pytest_cache", ".ruff_cache", ".next", ".cache", "coverage",
   "vendor",
 ]);
-/** Files whose content readme-style reads; any other file only needs to be known to exist. */
-const READ =
-  /(^|\/)(licen[cs]e|copying|unlicense)[^/]*$|\.(toml|json|ya?ml|cfg|mod)$|^\.git\/config$|(^|\/)setup\.py$/i;
+/** Files at the top of the project whose content readme-style reads. */
+const READ_AT_ROOT = new Set([
+  "pyproject.toml", "package.json", "Cargo.toml", "go.mod", ".readme-style.toml",
+  ".pre-commit-config.yaml", "ruff.toml", ".ruff.toml", "codecov.yml", ".codecov.yml",
+  ".readthedocs.yaml", ".readthedocs.yml", "readthedocs.yml",
+]);
+/** Whether readme-style reads a file; any other file only needs to be known to exist. */
+function isRead(path) {
+  if (path === ".git/config" || /^\.github\/workflows\/[^/]+\.ya?ml$/i.test(path)) return true;
+  return !path.includes("/") && (READ_AT_ROOT.has(path) || /^(licen[cs]e|copying|unlicense)/i.test(path));
+}
 const IMAGE = /\.(svg|png|jpe?g|gif|webp|avif)$/i;
 const TEXT_LIMIT = 512 * 1024;
+const TOTAL_TEXT_LIMIT = 8 * 1024 * 1024;
 const IMAGE_LIMIT = 4 * 1024 * 1024;
 const MAX_FILES = 20000;
 
@@ -24,6 +33,7 @@ export async function readFolder(fileList) {
   const images = new Map();
   let readme = null;
   let seen = 0;
+  let read = 0;
   for (const file of fileList) {
     // The first part is the chosen folder's own name.
     const parts = file.webkitRelativePath.split("/").slice(1);
@@ -36,10 +46,12 @@ export async function readFolder(fileList) {
       readme = { path, rank, text: await file.text() };
       continue;
     }
-    files[path] = READ.test(path) && file.size <= TEXT_LIMIT ? await file.text() : "";
+    const wanted = isRead(path) && file.size <= TEXT_LIMIT && read + file.size <= TOTAL_TEXT_LIMIT;
+    files[path] = wanted ? await file.text() : "";
+    if (wanted) read += file.size;
     if (IMAGE.test(path) && file.size <= IMAGE_LIMIT) images.set(path, file);
   }
-  return { readme, files, images, truncated: seen > MAX_FILES };
+  return { kind: "folder", readme, files, images, truncated: seen > MAX_FILES };
 }
 
 /** An example from examples.json, in the same shape. Its images are SVG text. */
@@ -49,6 +61,7 @@ export function exampleProject(example) {
     if (/\.svg$/i.test(path)) images.set(path, new Blob([text], { type: "image/svg+xml" }));
   }
   return {
+    kind: "example",
     readme: { path: "README.md", text: example.readme },
     files: example.files,
     images,

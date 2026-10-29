@@ -197,8 +197,12 @@ impl Theme {
     }
 }
 
-fn whole_title(pattern: &str) -> Result<Regex, regex::Error> {
-    Regex::new(&format!(r"(?i)^\W*(?:{pattern})\W*$"))
+/// A pattern matched against a whole section title, ignoring case and the decoration around
+/// it: punctuation, emoji, and the variation selectors and joiners that complete an emoji (`❤️`
+/// ends with one, and `\W` alone counts it as part of a word).
+pub(crate) fn whole_title(pattern: &str) -> Result<Regex, regex::Error> {
+    const DECORATION: &str = r"[\W\p{M}\x{200D}]*";
+    Regex::new(&format!(r"(?i)^{DECORATION}(?:{pattern}){DECORATION}$"))
 }
 
 /// Why a theme could not be resolved.

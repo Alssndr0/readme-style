@@ -1,25 +1,32 @@
-// The rendered README, shown in a sandboxed frame: the README's own HTML is displayed as GitHub
-// would display it, and its scripts cannot run. Only the frame's own script, carrying a fresh
-// nonce, may run; it scrolls to sections and hands other links to the page.
+// The rendered README, shown in a sandboxed frame as GitHub would show it. The HTML is first
+// reduced to what GitHub keeps (sanitize.js); the frame then has an opaque origin and a content
+// security policy under which only its own script, carrying a fresh nonce, may run. That script
+// scrolls to sections and hands other links to the page, tagged with a token only this document
+// knows, so nothing else in the frame can speak for it.
+
+import { sanitize } from "./sanitize.js";
 
 const FRAME_SCRIPT = `
+const TOKEN = FRAME_TOKEN;
+const tell = (message) => parent.postMessage({ ...message, token: TOKEN }, "*");
 const decode = (text) => { try { return decodeURIComponent(text); } catch { return text; } };
 const scrollTarget = (id) =>
   document.getElementById(id) || document.getElementById("user-content-" + id);
 document.addEventListener("click", (event) => {
-  const link = event.target.closest && event.target.closest("a[href]");
+  const link = event.composedPath().find(
+    (node) => node instanceof Element && (node.localName === "a" || node.localName === "area"));
   if (!link) return;
   event.preventDefault();
-  const href = link.getAttribute("href");
+  const href = link.getAttribute("href") ?? "";
   if (href.startsWith("#")) {
     const id = decode(href.slice(1));
     const target = id ? scrollTarget(id) : document.body;
     if (target) target.scrollIntoView({ behavior: "smooth" });
-  } else {
-    parent.postMessage({ readmeStyle: "open", href }, "*");
+  } else if (href) {
+    tell({ readmeStyle: "open", href });
   }
-});
-addEventListener("scroll", () => parent.postMessage({ readmeStyle: "scroll", y: scrollY }, "*"), { passive: true });
+}, true);
+addEventListener("scroll", () => tell({ readmeStyle: "scroll", y: scrollY }), { passive: true });
 addEventListener("DOMContentLoaded", () => scrollTo(0, INITIAL_SCROLL));
 `;
 
@@ -69,11 +76,10 @@ function dataUrl(file) {
 }
 
 /**
- * Point relative image URLs at something the frame can load: a file of the opened folder, or
- * the repository's raw file on GitHub. Parsing does not run scripts or load anything.
+ * Point relative image URLs in `doc` at something the frame can load: a file of the opened
+ * folder, or the repository's raw file on GitHub.
  */
-async function resolveImages(html, { images, repo }) {
-  const doc = new DOMParser().parseFromString(`<body>${html}</body>`, "text/html");
+async function resolveImages(doc, { images, repo }) {
   const resolve = async (url) => {
     if (!isRelative(url)) return url;
     const path = projectPath(url);
@@ -96,27 +102,36 @@ async function resolveImages(html, { images, repo }) {
     );
     source.setAttribute("srcset", candidates.join(", "));
   }
-  return doc.body.innerHTML;
 }
 
-/** The frame's document: the rendered README, the Markdown styles and the frame script. */
+/**
+ * The frame's document for rendered README HTML: sanitized, with images resolved, the Markdown
+ * styles and the frame script. `token` identifies the frame's messages.
+ */
 export async function previewDocument(html, { css, images, repo, scroll }) {
   const n = nonce();
-  const body = await resolveImages(html, { images, repo });
+  const token = nonce();
+  const doc = sanitize(html);
+  await resolveImages(doc, { images, repo });
   const policy = [
     "default-src 'none'",
     "img-src https: http: data:",
-    "media-src https: data:",
     "style-src 'unsafe-inline'",
     `script-src 'nonce-${n}'`,
+    "base-uri 'none'",
+    "form-action 'none'",
   ].join("; ");
-  const script = FRAME_SCRIPT.replace("INITIAL_SCROLL", String(Math.round(scroll) || 0));
-  return `<!doctype html>
+  const script = FRAME_SCRIPT.replace("FRAME_TOKEN", JSON.stringify(token)).replace(
+    "INITIAL_SCROLL",
+    String(Math.round(scroll) || 0),
+  );
+  const page = `<!doctype html>
 <html><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="${policy}">
 <style>${css}</style>
 <script nonce="${n}">${script}</script>
-</head><body><article class="markdown-body">${body}</article></body></html>`;
+</head><body><article class="markdown-body">${doc.body.innerHTML}</article></body></html>`;
+  return { page, token };
 }
 
 /** Where a link in the README leads, if anywhere outside the README itself. */

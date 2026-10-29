@@ -636,6 +636,7 @@ const PLAYGROUND_FILES: &[&str] = &[
     "engine.js",
     "preview.js",
     "project.js",
+    "sanitize.js",
 ];
 
 /// The version in `[workspace.package]`.

@@ -8,10 +8,11 @@ use std::sync::LazyLock;
 use regex::Regex;
 
 use crate::document::{Block, BlockKind, Document};
+use crate::theme::whole_title;
 use crate::urls;
 
 static TOC_TITLE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?i)^\W*(table of contents|contents|toc)\W*$").expect("valid regex"));
+    LazyLock::new(|| whole_title("table of contents|contents|toc").expect("valid regex"));
 static CENTERED: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"(?i)align\s*=\s*["']?center|<center"#).expect("valid regex"));
 

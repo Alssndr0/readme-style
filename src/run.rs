@@ -12,7 +12,7 @@ use readme_style_core::theme::{DEFAULT_THEME, Theme};
 use readme_style_core::{Outcome, StyleError, recorded_theme, style};
 
 use crate::args::{Args, Format};
-use crate::files::{find_readme, write_readme};
+use crate::files::{find_readme, resolve_readme, write_readme};
 use crate::report::{self, FileReport, Printer, Status};
 
 /// Everything needed to style one README.
@@ -58,6 +58,7 @@ fn load_config(readme: &Path) -> Result<Config, config::ConfigError> {
 }
 
 fn prepare(path: &Path, args: &Args) -> Result<Job, String> {
+    resolve_readme(path).map_err(|e| format!("will not read {}: {e}", path.display()))?;
     let bytes = fs::read(path).map_err(|e| format!("cannot read {}: {e}", path.display()))?;
     let text = String::from_utf8(bytes).map_err(|_| format!("{} is not valid UTF-8", path.display()))?;
     let absolute = fs::canonicalize(path).map_err(|e| format!("cannot resolve {}: {e}", path.display()))?;

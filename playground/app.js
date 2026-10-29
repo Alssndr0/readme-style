@@ -33,7 +33,15 @@ const state = {
   tab: "styled",
   scroll: { styled: 0, original: 0 },
   shown: null,
+  /** The token of the document in the preview frame; its messages carry it. */
+  frameToken: null,
+  /** Whether the frame's next load is one the page started. */
+  expectLoad: false,
 };
+
+const STOPPED = `<!doctype html><meta http-equiv="Content-Security-Policy" content="default-src 'none'">
+<p>The README tried to replace the preview with another page, so it was stopped.
+GitHub would remove what did that.</p>`;
 
 function element(tag, text, className) {
   const node = document.createElement(tag);
@@ -152,17 +160,33 @@ async function showPreview() {
   if (key === state.shown) return;
   state.shown = key;
   const html = state.engine.render(markdown);
-  const doc = await previewDocument(html, {
+  const { page, token } = await previewDocument(html, {
     css: state.css,
     images: state.project.images,
     repo: ui.repo.value.trim() || null,
     scroll: state.scroll[state.tab],
   });
-  if (state.shown === key) ui.frame.srcdoc = doc;
+  if (state.shown !== key) return;
+  state.frameToken = token;
+  state.expectLoad = true;
+  ui.frame.srcdoc = page;
 }
+
+// A load the page did not start means something in the frame navigated it away.
+ui.frame.addEventListener("load", () => {
+  if (state.expectLoad || state.frameToken === null) {
+    state.expectLoad = false;
+    return;
+  }
+  state.frameToken = null;
+  state.shown = null;
+  state.expectLoad = true;
+  ui.frame.srcdoc = STOPPED;
+});
 
 window.addEventListener("message", (event) => {
   if (event.source !== ui.frame.contentWindow || typeof event.data !== "object" || event.data === null) return;
+  if (state.frameToken === null || event.data.token !== state.frameToken) return;
   if (event.data.readmeStyle === "scroll" && typeof event.data.y === "number") {
     if (state.tab in state.scroll) state.scroll[state.tab] = event.data.y;
   } else if (event.data.readmeStyle === "open" && typeof event.data.href === "string") {
@@ -187,6 +211,16 @@ function load(project, label) {
   ui.path.textContent = project.readme.path;
   const count = Object.keys(project.files).length;
   ui.project.textContent = `${label}${count ? `, ${count} project files` : ""}${project.truncated ? " (first 20,000)" : ""}`;
+  restyle();
+}
+
+/** A README pasted over an example is the user's own: the example's files no longer apply. */
+function detachFromExample(pasted) {
+  if (state.project.kind !== "example" || pasted.length < ui.source.value.length / 2) return;
+  state.project = { kind: "pasted", readme: { path: "README.md" }, files: {}, images: new Map(), truncated: false };
+  ui.example.value = "";
+  ui.path.textContent = "README.md";
+  ui.project.textContent = "your README, without project files: open its folder to infer badges";
   restyle();
 }
 
@@ -221,7 +255,7 @@ async function main() {
       option.title = theme.description;
       ui.theme.append(option);
     }
-    ui.example.append(Object.assign(element("option", "Your folder"), { value: "", hidden: true }));
+    ui.example.append(Object.assign(element("option", "Your own"), { value: "", hidden: true }));
     for (const [i, example] of examples.entries()) {
       const option = element("option", example.name);
       option.value = String(i);
@@ -234,6 +268,10 @@ async function main() {
     });
     ui.folder.addEventListener("change", () => openFolder([...ui.folder.files]));
     ui.source.addEventListener("input", debounce(restyle, 150));
+    ui.source.addEventListener("paste", (event) => {
+      const pasted = event.clipboardData?.getData("text") ?? "";
+      setTimeout(() => detachFromExample(pasted));
+    });
     ui.repo.addEventListener("input", debounce(restyle, 300));
     ui.theme.addEventListener("change", restyle);
     ui.scheme.addEventListener("change", () => {

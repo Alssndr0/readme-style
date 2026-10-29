@@ -103,9 +103,16 @@ class Chrome:
         self.process.wait()
 
 
+REQUESTED = []
+
+
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *args):
         pass
+
+    def send_head(self):
+        REQUESTED.append(self.path)
+        return super().send_head()
 
 
 def serve(folder):
@@ -164,12 +171,33 @@ def main():
             output = chrome.eval("document.getElementById('output').textContent")
             if status != "changed" or "> [!NOTE]" not in output:
                 failures.append(f"typing did not restyle: {status}: {output[:200]}")
-            hostile = ('# demo\n\n<img src=x onerror="parent.document.title=\'ran\'">\n\n'
-                       '<script>parent.document.title = "ran"</script>\n\n[x](javascript:parent.document.title="ran")\n')
+            hostile = "\n\n".join([
+                "# demo",
+                '<img src=x onerror="parent.document.title=\'ran\'">',
+                '<script>parent.document.title = "ran"</script>',
+                '[x](javascript:parent.document.title="ran")',
+                '<meta http-equiv="refresh" content="0;url=/evil-refresh">',
+                '<base href="/evil-base/">',
+                '<img src="relative.png">',
+                '<svg><a xlink:href="/evil-svg"><text y="20">svg</text></a></svg>',
+                '<div><template shadowrootmode="open"><a href="/evil-shadow">shadow</a></template></div>',
+                '<map name="m"><area href="/evil-area" shape="rect" coords="0,0,9,9"></map>',
+                '<a href="https://example.org/ok" style="color:red" onclick="x()">kept</a>',
+            ]) + "\n"
             restyle(chrome, "source", hostile, "input")
-            time.sleep(1)
+            time.sleep(1.5)
             if chrome.eval("document.title") != "readme-style playground":
                 failures.append("a script in the README ran")
+            evil = [path for path in REQUESTED if "evil" in path]
+            if evil:
+                failures.append(f"the preview requested {evil}")
+            srcdoc = chrome.eval("document.getElementById('preview').srcdoc")
+            body = srcdoc.split("<body>", 1)[-1]
+            for marker in ("<meta", "<base", "<svg", "<template", "<area", " onclick=", " onerror=", " style=", "javascript:"):
+                if marker in body:
+                    failures.append(f"the preview kept {marker}")
+            if 'href="https://example.org/ok"' not in body:
+                failures.append("a safe link was dropped")
             for exception in chrome.exceptions():
                 failures.append(f"uncaught exception: {json.dumps(exception)[:300]}")
             if failures:

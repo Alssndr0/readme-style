@@ -8,11 +8,11 @@ use super::{Context, names, sync_region};
 use crate::document::{Document, Heading};
 use crate::edit::Editor;
 use crate::outline::is_toc_title;
-use crate::theme::TocStyle;
+use crate::theme::{TocStyle, whole_title};
 
 /// Sections whose subheadings are entries (versions, dates, questions), not structure.
 static ENTRY_LISTS: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)^\W*(change ?log|changes|release notes|release history|history|news|updates|what'?s new|faq|frequently asked questions)\W*$")
+    whole_title("change ?log|changes|release notes|release history|history|news|updates|what'?s new|faq|frequently asked questions")
         .expect("valid regex")
 });
 /// Past this many entries a list stops helping; only top-level sections are listed then.

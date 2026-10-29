@@ -59,9 +59,9 @@ fn lead(text: &str) -> Option<(String, String)> {
 static ORDERED: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^(\d{1,9})([.)])(\s.*)?$").expect("valid regex"));
 static RULE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(?:[-*_][ \t]*){3,}$").expect("valid regex"));
-/// A setext underline, or a one-column table delimiter row.
+/// A setext underline, or a one-column table delimiter row (`--`, `:-:`, `-|`).
 static UNDERLINE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^(?:=+|:?-+:?)[ \t]*$").expect("valid regex"));
+    LazyLock::new(|| Regex::new(r"^(?:=+|:?-+:?[ \t]*\|?)[ \t]*$").expect("valid regex"));
 /// A link reference or footnote definition.
 static DEFINITION: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^\[(?:[^\]\\]|\\.)*\]:").expect("valid regex"));
@@ -90,14 +90,14 @@ fn as_paragraph_start(text: &str) -> Option<String> {
             item.get(3).map_or("", |m| m.as_str())
         ));
     }
+    if let Some(definition) = DEFINITION.find(text) {
+        // `[x]\:` is no definition, and `[x]` stays a link wherever one is defined.
+        let colon = definition.end() - 1;
+        return Some(format!("{}\\{}", &text[..colon], &text[colon..]));
+    }
     let list_marker = text.starts_with(['-', '+', '*']) && text[1..].starts_with([' ', '\t'])
         || matches!(text, "-" | "+" | "*");
-    if text.starts_with(['#', '>', '='])
-        || list_marker
-        || RULE.is_match(text)
-        || UNDERLINE.is_match(text)
-        || DEFINITION.is_match(text)
-    {
+    if text.starts_with(['#', '>', '=']) || list_marker || RULE.is_match(text) || UNDERLINE.is_match(text) {
         return Some(format!("\\{text}"));
     }
     Some(text.to_owned())
@@ -125,7 +125,6 @@ fn quote(doc: &Document, block: &Block, ed: &mut Editor<'_>) {
     let mut lines = vec![format!("{prefix}[!{kind}]")];
     let mut end = block.start + 1;
     if rest.is_empty() {
-        // The next line opens the alert's text, and must still read as a paragraph.
         let Some(next) = doc
             .lines
             .get(end)
@@ -134,6 +133,18 @@ fn quote(doc: &Document, block: &Block, ed: &mut Editor<'_>) {
         else {
             return;
         };
+        // The lead-in's paragraph either goes on to the next line, or ends there and the next
+        // line opens a block of its own (a list, a heading), which the alert keeps as it is.
+        let lead_in = Document::parse(&format!("{content}\n{}\n", &next[2]));
+        match lead_in.blocks.first() {
+            Some(b) if b.kind == BlockKind::Paragraph && b.end >= 2 => {}
+            Some(b) if b.kind == BlockKind::Paragraph && !next[2].trim().is_empty() => {
+                ed.replace_exact(block.start, end, lines);
+                return;
+            }
+            _ => return,
+        }
+        // The next line opens the alert's text, and must still read as a paragraph.
         let Some(opening) = as_paragraph_start(&next[2]).filter(|o| !o.is_empty()) else {
             return;
         };
@@ -189,8 +200,10 @@ mod tests {
             ("2024 was good", Some("2024 was good")),
             ("--", Some("\\--")),
             (":--- ", Some("\\:--- ")),
-            ("[foo]: https://example.com", Some("\\[foo]: https://example.com")),
-            ("[^1]: see below", Some("\\[^1]: see below")),
+            ("[foo]: https://example.com", Some("[foo]\\: https://example.com")),
+            ("[^1]: see below", Some("[^1]\\: see below")),
+            ("-|", Some("\\-|")),
+            (":--- |", Some("\\:--- |")),
             ("[a link](x) here", Some("[a link](x) here")),
             ("<div>x</div> hello", None),
             ("```rust", None),

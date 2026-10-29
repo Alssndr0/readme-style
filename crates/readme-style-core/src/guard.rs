@@ -143,6 +143,11 @@ fn atoms(text: &str) -> Vec<(Atom, Option<usize>)> {
                 if is_title {
                     alert_title = true;
                 } else if BLOCKS.contains(&name.as_str()) {
+                    // The title stands in for a lead-in that shared its paragraph; before any
+                    // other block, it stands in for a paragraph of its own.
+                    if name != "p" {
+                        join_next_block = false;
+                    }
                     push(&mut atoms, Atom::Break, line, &mut join_next_block);
                 }
                 match name.as_str() {

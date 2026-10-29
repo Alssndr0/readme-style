@@ -50,6 +50,15 @@ All notable changes are listed here. The format follows
 - Front matter with keys such as `C++:` is recognized; `---`, a `# Heading`, `---` is not front
   matter.
 - Headings made only of an image or HTML get no empty table of contents or nav entry.
+- A README is read and written only when it lies in the repository its path is in, after
+  following links to the file or to a folder above it, and never inside `.git`: a link in a
+  cloned repository can no longer make `--check` print, `suggest` send, or `--write` rewrite a
+  file elsewhere. A read-only README is not replaced, and a write keeps the file's owner and group.
+- `> **Warning:**` followed by a list or a heading in the same quote becomes an alert holding that
+  block, instead of being refused. A definition-like opening keeps its reference link
+  (`[x]\:`), and a one-column table row with a trailing pipe is escaped.
+- Section titles with emoji such as `❤️` or `🗂️` (which end with a variation selector) are
+  recognized for the nav bar, the table of contents and folding.
 
 ## [0.2.0] - 2026-10-29
 

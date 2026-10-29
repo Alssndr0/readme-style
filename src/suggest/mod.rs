@@ -18,7 +18,7 @@ use readme_style_core::project::{OsFs, inspect};
 use serde::{Deserialize, Serialize};
 
 use crate::args::{Format, Provider, SuggestArgs, SuggestKind};
-use crate::files::find_readme;
+use crate::files::{find_readme, resolve_readme};
 use llm::{Backend, Credential, Effort, LlmError, Model};
 
 const DEFAULT_ANTHROPIC_MODEL: &str = "claude-opus-5-5";
@@ -114,7 +114,8 @@ fn resolve(args: &SuggestArgs, settings: &AiSettings) -> Result<Model, String> {
 fn readme_path(path: Option<&PathBuf>) -> Result<PathBuf, String> {
     let raw = path.cloned().unwrap_or_else(|| PathBuf::from("."));
     let readme = find_readme(&raw).ok_or_else(|| format!("no README found at {}", raw.display()))?;
-    fs::canonicalize(&readme).map_err(|e| format!("cannot resolve {}: {e}", readme.display()))
+    // The README is sent to the model: never through a link to a file elsewhere.
+    resolve_readme(&readme).map_err(|e| format!("will not read {}: {e}", readme.display()))
 }
 
 fn run(args: &SuggestArgs) -> Result<(Report, String), String> {

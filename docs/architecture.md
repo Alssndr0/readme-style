@@ -137,9 +137,14 @@ through `MemoryFs`, so configuration discovery, theme choice and project inspect
 as on the command line, and a folder opened in the browser gets the badges it would get there. Nothing
 is uploaded.
 
-The preview renders the README in a frame with `sandbox="allow-scripts"` (an opaque origin) and a
-content security policy that lets only the frame's own script run, by nonce. That script scrolls to
-anchors and passes other links to the page; a README's own scripts and event handlers never run.
+The preview first reduces the rendered HTML to what GitHub keeps (`playground/sanitize.js`, an
+allowlist modelled on GitHub's: no scripts, styles, forms, `meta`, `base`, SVG, image maps or
+templates, and only `http`, `https`, `mailto` and relative links). It then shows it in a frame with
+`sandbox="allow-scripts"` (an opaque origin) and a content security policy that lets only the
+frame's own script run, by nonce, with `base-uri` and `form-action` set to `'none'`. That script
+scrolls to anchors and passes other links to the page, tagged with a token only that document
+knows; the page ignores any other message, and replaces the frame's content if anything navigates
+it away. `playground/tests/smoke.py` checks all of this in headless Chrome.
 
 ## Suggestions
 

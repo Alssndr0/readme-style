@@ -9,7 +9,7 @@ use crate::badges::{ReadmeView, candidates, select};
 use crate::document::{Document, Heading};
 use crate::edit::Editor;
 use crate::outline::is_toc_title;
-use crate::theme::{HeaderPosition, NavStyle};
+use crate::theme::{HeaderPosition, NavStyle, whole_title};
 
 /// Sections a nav bar prefers when there are more than it has room for, most wanted first:
 /// where to start and how to use it, then what the project shows. Sections no pattern knows
@@ -29,11 +29,10 @@ static NAV_LAST: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 fn anchored(names: &str) -> Regex {
-    Regex::new(&format!(r"(?i)^\W*(?:{names})\W*$")).expect("valid regex")
+    whole_title(names).expect("valid regex")
 }
 
-static DOCS_SECTION: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?i)^\W*(documentation|docs)\W*$").expect("valid regex"));
+static DOCS_SECTION: LazyLock<Regex> = LazyLock::new(|| anchored("documentation|docs"));
 static WORD: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\w+").expect("valid regex"));
 
 /// A nav bar is read at a glance: sections with longer titles are left out of it.

@@ -140,8 +140,15 @@ pub fn style_readme(request: &StyleRequest) -> StyleResponse {
             name.clone(),
             config.source.clone().unwrap_or_else(|| "config".into()),
         )
-    } else if let Some(name) = recorded_theme(&request.readme).filter(|n| config.themes.contains(n)) {
-        (name, "markers in the README".to_owned())
+    } else if let Some(name) = recorded_theme(&request.readme) {
+        if config.themes.contains(&name) {
+            (name, "markers in the README".to_owned())
+        } else {
+            warnings.push(format!(
+                "the README's markers name theme '{name}', which does not exist; using {DEFAULT_THEME}"
+            ));
+            (DEFAULT_THEME.to_owned(), "default".to_owned())
+        }
     } else {
         (DEFAULT_THEME.to_owned(), "default".to_owned())
     };
@@ -246,6 +253,11 @@ mod tests {
         let unknown = style_readme(&request(r##"{"readme": "# demo\n", "theme": "neon"}"##));
         assert_eq!(unknown.status, Status::Error);
         assert!(unknown.message.expect("message").contains("neon"));
+        let recorded = style_readme(&request(
+            r##"{"readme": "# demo\n\n<!-- readme-style:header theme=neon -->\nx\n<!-- /readme-style:header -->\n"}"##,
+        ));
+        assert_eq!(recorded.theme.as_deref(), Some("minimal"));
+        assert!(recorded.warnings[0].contains("'neon'"), "{:?}", recorded.warnings);
     }
 
     #[test]
