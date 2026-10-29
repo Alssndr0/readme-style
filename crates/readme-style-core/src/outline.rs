@@ -8,7 +8,7 @@ use std::sync::LazyLock;
 use regex::Regex;
 
 use crate::document::{Block, BlockKind, Document};
-use crate::html::depth_change;
+use crate::html::{Tag, depth_change, tokenize};
 use crate::theme::whole_title;
 use crate::urls;
 
@@ -17,7 +17,7 @@ const WRAPPERS: &[&str] = &["div", "details", "table", "section", "center"];
 
 static TOC_TITLE: LazyLock<Regex> =
     LazyLock::new(|| whole_title("table of contents|contents|toc").expect("valid regex"));
-pub(crate) static CENTERED: LazyLock<Regex> =
+static CENTERED: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"(?i)align\s*=\s*["']?center|<center"#).expect("valid regex"));
 
 /// The longest text that still reads as a one-line pitch.
@@ -121,8 +121,52 @@ fn is_body_html(block: &Block) -> bool {
 
 /// A block that opens a wrapper which does not center: what follows it, up to its end tag, is
 /// laid out as the README's author chose, and is no part of a centered hero.
-fn opens_uncentered(block: &Block) -> bool {
-    wrapper_change(block) > 0 && !CENTERED.is_match(&block.literal.to_ascii_lowercase())
+pub(crate) fn opens_uncentered(block: &Block) -> bool {
+    wrapper_change(block) > 0
+        && tokenize(&block.literal).iter().any(|tag| match tag {
+            // The wrapper's own tag decides, not a centered `<p>` inside it.
+            Tag::Start { name, .. } if WRAPPERS.contains(&name.as_str()) => {
+                name != "center"
+                    && !tag
+                        .attr("align")
+                        .is_some_and(|a| a.trim().eq_ignore_ascii_case("center"))
+            }
+            _ => false,
+        })
+}
+
+/// The wrappers a hero has opened and not closed. One that does not center may open in the hero
+/// only if it closes there too (a logo in a plain `<div>`); left open, it holds body text.
+#[derive(Default)]
+struct Balance {
+    /// For each open wrapper, whether it centers.
+    open: Vec<bool>,
+}
+
+impl Balance {
+    /// Whether `block` only closes wrappers this hero opened.
+    fn closes_own(&self, block: &Block) -> bool {
+        let change = wrapper_change(block);
+        change < 0 && self.open.len() >= change.unsigned_abs() as usize && block.text.trim().is_empty()
+    }
+
+    fn add(&mut self, block: &Block) {
+        let change = wrapper_change(block);
+        if change > 0 {
+            let centers = !opens_uncentered(block);
+            self.open
+                .extend(std::iter::repeat_n(centers, change.unsigned_abs() as usize));
+        } else {
+            for _ in 0..change.unsigned_abs() {
+                self.open.pop();
+            }
+        }
+    }
+
+    /// Whether the hero may end here: every wrapper still open centers.
+    fn complete(&self) -> bool {
+        self.open.iter().all(|&centers| centers)
+    }
 }
 
 /// How many wrappers (`<div>`, `<details>` and the like) a block opens, or closes if negative.
@@ -207,31 +251,46 @@ impl Outline {
         } else {
             after_title
         };
+        let mut balance = Balance::default();
         for &(index, block) in hero_blocks {
             if is_comment(block) {
                 continue;
             }
-            let fits = if title.is_some() {
-                is_tagline(index) || is_badge_row(block) || is_link_row(block) || is_hero_html(block, true)
-            } else {
-                is_tagline(index) || is_media(block) || is_hero_html(block, false)
-            };
-            if !fits || opens_uncentered(block) {
+            let bare_opening =
+                opens_uncentered(block) && block.text.trim().is_empty() && block.images.is_empty();
+            let fits = balance.closes_own(block)
+                || bare_opening
+                || if title.is_some() {
+                    is_tagline(index)
+                        || is_badge_row(block)
+                        || is_link_row(block)
+                        || is_hero_html(block, true)
+                } else {
+                    is_tagline(index) || is_media(block) || is_hero_html(block, false)
+                };
+            if !fits {
                 break;
             }
-            hero_end = block.end;
+            balance.add(block);
+            if balance.complete() {
+                hero_end = block.end;
+            }
         }
 
         let lead_start = if preamble > 0 { hero_blocks[0].1.start } else { 0 };
         let mut lead_end = lead_start;
+        let mut lead_balance = Balance::default();
         for (_, block) in user.iter().filter(|(_, b)| b.start >= lead_start) {
             if is_comment(block) {
                 continue;
             }
-            if !(is_media(block) || is_hero_html(block, false)) || opens_uncentered(block) {
+            if !(lead_balance.closes_own(block) || is_media(block) || is_hero_html(block, false)) {
                 break;
             }
-            lead_end = block.end;
+            lead_balance.add(block);
+            if lead_balance.complete() {
+                lead_end = block.end;
+            }
         }
 
         let hero_start = match &title {
@@ -241,7 +300,12 @@ impl Outline {
                     if is_comment(block) {
                         continue;
                     }
-                    if !(is_media(block) || is_hero_html(block, false)) {
+                    // Not past the end of an earlier wrapper, nor the start of one that does not
+                    // center: it holds the title along with whatever body text follows.
+                    if !(is_media(block) || is_hero_html(block, false))
+                        || wrapper_change(block) < 0
+                        || opens_uncentered(block)
+                    {
                         break;
                     }
                     start = block.start;

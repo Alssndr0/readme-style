@@ -237,8 +237,8 @@ fn the_hero_stops_at_folded_sections_and_the_wrapper_nests() {
             "{name}:\n{out}"
         );
     }
-    // A tagline in a `<div>` closed by a later block: the header follows the badges inside it,
-    // and the centering wrapper closes after the README's own `</div>`, so the two nest.
+    // A tagline in a `<div>` closed by a later block: the hero takes the whole div, and the
+    // header and the centering wrapper's end come after the README's own `</div>`.
     let div = "# Thing\n\n<div align=\"center\">\n  <strong>A tool that makes things.</strong>\n\n[![CI](https://img.shields.io/badge/ci-passing-green)](x)\n\n</div>\n\n## Install\n\nRun it.\n\n## Usage\n\nUse it.\n";
     let out = run(div, "startup");
     let badges = out.find("[![CI]").expect("the README's badges");
@@ -248,7 +248,7 @@ fn the_hero_stops_at_folded_sections_and_the_wrapper_nests() {
         .find("</div><!-- /readme-style:center -->")
         .expect("the wrapper");
     assert!(
-        badges < header && header < own_close && own_close < wrapper_close,
+        badges < own_close && own_close < header && header < wrapper_close,
         "{out}"
     );
 }
@@ -286,6 +286,40 @@ fn the_centered_hero_respects_the_readmes_own_layout() {
     let wrapper_close = out.find("<!-- /readme-style:center -->").expect("a wrapper");
     assert!(
         wrapper_close < out.find("</div>\n").expect("the stray tag"),
+        "{out}"
+    );
+}
+
+#[test]
+fn wrappers_around_the_hero_are_read_by_their_own_tag() {
+    let sections = "\n\n## Install\n\nRun it.\n\n## Usage\n\nUse it.\n";
+    // A right-aligned language switcher closed before the hero: the hero is still centered.
+    let switcher = format!(
+        "<div align=\"right\">\n\n[English](README.md) | [Deutsch](README.de.md)\n\n</div>\n\n<img src=\"logo.png\" width=\"120\">\n\n# Project\n\nA tool for things.{sections}"
+    );
+    let out = run(&switcher, "startup");
+    let wrapper = out.find("<!-- readme-style:center -->").expect("a wrapper");
+    assert!(wrapper > out.find("</div>").expect("the switcher's end"), "{out}");
+    assert!(wrapper < out.find("# Project").expect("the title"), "{out}");
+    // A logo in a plain div: the div closes within the hero, which stays centered.
+    let plain = format!(
+        "<div>\n\n<img src=\"logo.png\" width=\"200\">\n\n</div>\n\n**Project** does things.{sections}"
+    );
+    let out = run(&plain, "startup");
+    assert!(
+        out.starts_with("<div align=\"center\"><!-- readme-style:center -->"),
+        "{out}"
+    );
+    let header = out.find("readme-style:header").expect("a header");
+    assert!(header > out.find("does things").expect("the tagline"), "{out}");
+    // A plain div around a centered paragraph and body text is not centered.
+    let body = format!(
+        "# Project\n\n<div markdown=\"1\">\n<p align=\"center\"><img src=\"https://img.shields.io/badge/build-passing-green\"></p>\n\nA long paragraph of body text that is no tagline: it explains what the project does, how it\nworks, and why it exists, across several lines, as an introduction does,\nand it goes on for a third line before the sections.\n\n</div>{sections}"
+    );
+    let out = run(&body, "startup");
+    let wrapper_close = out.find("<!-- /readme-style:center -->").expect("a wrapper");
+    assert!(
+        wrapper_close < out.find("<div markdown").expect("the div"),
         "{out}"
     );
 }

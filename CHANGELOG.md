@@ -14,8 +14,8 @@ All notable changes are listed here. The format follows
   model only: a repository cannot choose where your key is sent).
 - A before-and-after gallery in `examples/`: four projects, every theme, what changed and the diff.
 - A browser playground (`cargo xtask playground`): the engine compiled to WebAssembly, with a
-  sanitized, sandboxed preview, the diff, badge evidence, the examples, and project folders read in
-  the page.
+  sanitized, sandboxed preview that keeps its scroll position and never waits for slow images, the
+  diff, badge evidence, the examples, and project folders read in the page.
 
 ### Changed
 
@@ -64,11 +64,11 @@ All notable changes are listed here. The format follows
 - A lead-in alone in a quote becomes an alert holding the next block only when that block always
   shows (a list, heading, code, quote, table or rule): GitHub shows `[!NOTE]` as text when an alert
   holds only a comment or invisible HTML.
-- A README that is a link must lead to a Markdown file in its own folder or below; a folder link
-  must stay in the repository it sits in. A cloned repository can no longer make readme-style read,
-  print, send to a model or rewrite a key, a `.env` file or another repository's files, even inside
-  a home folder kept in git. `..` from inside a nested repository works, and a README in a folder
-  that cannot be written is rewritten in place.
+- A README that is a link must lead to a Markdown file (or a plain `README`) in its own folder or
+  below; a folder link must stay in the repository it sits in. A cloned repository can no longer
+  make readme-style read, print, send to a model or rewrite a key, a `.env` file or another
+  repository's files, even inside a home folder kept in git. `..` from inside a nested repository
+  works, and a README in a folder that cannot be written is rewritten in place.
 - HTML holding a folded section, a list or a table is never part of the hero or the tagline, so
   the header is never placed inside a `<details>` or a table cell, nor in a `<div>` that does not
   center. The centering wrapper nests with the README's own `<div>`s, enclosing the centered ones

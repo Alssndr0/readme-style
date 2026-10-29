@@ -26,17 +26,18 @@ pub(crate) fn find_readme(path: &Path) -> Option<PathBuf> {
 /// The file a README path names, after symbolic links, provided no link on the way could point
 /// readme-style at a file it must not read, print in a diff, send to a model or rewrite.
 ///
-/// - The README itself, when it is a link, must lead to a Markdown file in its own folder or
-///   below, outside any `.git`. A repository's README linking to `../.env`, to a key in your home
-///   folder, or even to a `.env` you created next to it, is refused.
+/// - The README itself, when it is a link, must lead to a Markdown file (by its extension, or a
+///   plain `README`) in its own folder or below, outside any `.git`. A repository's README linking
+///   to `../.env`, to a key in your home folder, or even to a `.env` you created next to it, is
+///   refused.
 /// - A folder link on the way must stay in the repository it sits in (the nearest folder holding
 ///   `.git` or `.github`), outside any `.git`, so a cloned repository cannot point a folder at
 ///   another one. Folder links outside any repository are your own, such as a projects folder
 ///   linked from home, and are followed.
 ///
-/// Two harmless setups are refused because they look like the ones above: a package README
-/// linking to its repository's README above it, and a link in a home folder kept in git to a
-/// project elsewhere. The message names the real path to use instead.
+/// Two harmless setups are refused because they look like the ones above: a package README linking
+/// to its repository's README above it, and a link in a home folder kept in git to a project
+/// elsewhere. The message names the real path to use instead.
 pub(crate) fn resolve_readme(path: &Path) -> io::Result<PathBuf> {
     let absolute = std::path::absolute(path)?;
     let last = absolute.components().count().saturating_sub(1);
@@ -94,13 +95,16 @@ fn inside(path: &Path, folder: &Path) -> bool {
         .is_ok_and(|rest| rest.components().all(|c| c.as_os_str() != ".git"))
 }
 
-/// Whether a file name says Markdown.
+/// Whether a file name says Markdown: a Markdown extension, or a plain `README`.
 fn is_markdown(path: &Path) -> bool {
-    path.extension().and_then(|e| e.to_str()).is_some_and(|e| {
-        ["md", "markdown", "mdown", "mkdn", "mkd", "mdwn"]
-            .iter()
-            .any(|m| e.eq_ignore_ascii_case(m))
-    })
+    const EXTENSIONS: &[&str] = &["md", "markdown", "mdown", "mkdn", "mkd", "mdwn", "mdx"];
+    match path.extension().and_then(|e| e.to_str()) {
+        Some(extension) => EXTENSIONS.iter().any(|m| extension.eq_ignore_ascii_case(m)),
+        None => path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .is_some_and(|n| n.eq_ignore_ascii_case("readme")),
+    }
 }
 
 /// The repository a real (link-free) folder is in: the nearest folder holding `.git` or

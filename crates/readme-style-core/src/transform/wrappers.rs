@@ -4,7 +4,7 @@ use super::{Context, delete_lines, names};
 use crate::document::{Block, Document};
 use crate::edit::Editor;
 use crate::markers::wrapper_line;
-use crate::outline::{CENTERED, wrapper_change};
+use crate::outline::{opens_uncentered, wrapper_change};
 use crate::theme::Align;
 
 /// Remove every wrapper line, so later steps see the README as the user wrote it.
@@ -36,9 +36,14 @@ fn nest(doc: &Document, mut start: usize, mut end: usize, limit: usize) -> Optio
                     .iter()
                     .rev()
                     .find(|b| b.start < start && wrapper_change(b) > 0)
-                    .filter(|b| CENTERED.is_match(&b.literal.to_ascii_lowercase()));
+                    .filter(|b| !opens_uncentered(b));
+                let content_before = user.iter().any(|b| {
+                    within(b, start, block.start) && (!b.text.trim().is_empty() || !b.images.is_empty())
+                });
                 match opener {
                     Some(opener) => start = opener.start,
+                    // Nothing before the closing tag: start after it.
+                    None if !content_before => start = block.end,
                     None => end = block.start,
                 }
                 continue 'start;
@@ -51,8 +56,10 @@ fn nest(doc: &Document, mut start: usize, mut end: usize, limit: usize) -> Optio
         .filter(|b| within(b, start, end))
         .map(|b| wrapper_change(b))
         .sum();
+    // Only a wrapper that centers is followed to its end: one that does not holds body text.
+    let centered_only = !user.iter().any(|b| within(b, start, end) && opens_uncentered(b));
     let after = end;
-    for block in user.iter().filter(|b| within(b, after, limit)) {
+    for block in user.iter().filter(|b| centered_only && within(b, after, limit)) {
         if depth <= 0 {
             break;
         }

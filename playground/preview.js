@@ -35,7 +35,30 @@ const follow = (event) => {
 document.addEventListener("click", follow, true);
 document.addEventListener("auxclick", follow, true);
 addEventListener("scroll", () => tell({ readmeStyle: "scroll", y: scrollY }), { passive: true });
-addEventListener("DOMContentLoaded", () => scrollTo(0, INITIAL_SCROLL));
+// Back to where the reader was. A new frame has no size yet when its document is parsed, and
+// images make it taller as they load: keep trying until there, unless the reader scrolls first.
+let target = INITIAL_SCROLL;
+let settled = target === 0;
+const restore = () => {
+  if (settled) return;
+  scrollTo(0, target);
+  settled = Math.abs(scrollY - target) < 2;
+};
+for (const name of ["wheel", "keydown", "touchstart", "mousedown"]) {
+  addEventListener(name, () => { settled = true; }, { passive: true, capture: true });
+}
+for (const name of ["resize", "load"]) addEventListener(name, restore);
+addEventListener("message", (event) => {
+  const data = event.data;
+  if (event.source !== parent || !data || data.token !== TOKEN || data.readmeStyle !== "scroll") return;
+  target = Math.max(0, Number(data.y) || 0);
+  settled = false;
+  restore();
+});
+addEventListener("DOMContentLoaded", () => {
+  restore();
+  tell({ readmeStyle: "ready" });
+});
 `;
 
 function nonce() {

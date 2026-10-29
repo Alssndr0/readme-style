@@ -170,9 +170,10 @@ async function showPreview() {
 }
 
 /**
- * Load a document in a new frame, out of sight, and swap it in once loaded. A frame of its own
- * each time has no history, so the mouse's Back button cannot take it to an earlier document,
- * and the old preview stays on screen until the new one is ready.
+ * Load a document in a new frame, out of sight, and swap it in as soon as its document is
+ * parsed (its script says so; images may still be loading). A frame of its own each time has no
+ * history, so the mouse's Back button cannot take it to an earlier document, and the old preview
+ * stays on screen until the new one is ready.
  */
 function show(page, token) {
   state.pending?.frame.remove();
@@ -180,32 +181,52 @@ function show(page, token) {
   frame.removeAttribute("srcdoc");
   frame.removeAttribute("id");
   frame.classList.add("loading");
+  frame.style.colorScheme = ui.scheme.value;
   frame.addEventListener("load", onFrameLoad);
   frame.srcdoc = page;
   state.pending = { frame, token };
   ui.frame.after(frame);
+  // A notice has no script to say it is ready.
+  if (token === null) swapIn();
 }
 
+function swapIn() {
+  const { frame, token } = state.pending;
+  state.pending = null;
+  frame.dataset.loads = "0";
+  frame.classList.remove("loading");
+  ui.frame.remove();
+  frame.id = "preview";
+  ui.frame = frame;
+  state.frameToken = token;
+  frame.contentWindow?.postMessage({ readmeStyle: "scroll", token, y: state.scroll[state.tab] ?? 0 }, "*");
+}
+
+// Once a frame has said it is ready (loads before that are its initial blank document), its
+// next load is its own document's; any later one means something navigated it away. A frame that
+// navigates before it is ready never says so, and is never shown.
 function onFrameLoad(event) {
   const frame = event.target;
-  if (state.pending?.frame === frame) {
-    state.frameToken = state.pending.token;
-    state.pending = null;
-    frame.classList.remove("loading");
-    ui.frame.remove();
-    frame.id = "preview";
-    ui.frame = frame;
-    return;
+  if (frame.dataset.loads === undefined) return;
+  const loads = Number(frame.dataset.loads) + 1;
+  frame.dataset.loads = String(loads);
+  if (loads === 1) return;
+  if (frame === ui.frame && state.frameToken !== null) {
+    state.frameToken = null;
+    state.shown = null;
+    // A newer preview on its way replaces it anyway.
+    if (!state.pending) show(STOPPED, null);
   }
-  // Any later load means something in the frame navigated it away.
-  if (frame !== ui.frame || state.frameToken === null) return;
-  state.frameToken = null;
-  state.shown = null;
-  show(STOPPED, null);
 }
 
 window.addEventListener("message", (event) => {
-  if (event.source !== ui.frame.contentWindow || typeof event.data !== "object" || event.data === null) return;
+  if (typeof event.data !== "object" || event.data === null) return;
+  const pending = state.pending;
+  if (event.data.readmeStyle === "ready") {
+    if (pending && event.source === pending.frame.contentWindow && event.data.token === pending.token) swapIn();
+    return;
+  }
+  if (event.source !== ui.frame.contentWindow) return;
   if (state.frameToken === null || event.data.token !== state.frameToken) return;
   if (event.data.readmeStyle === "scroll" && typeof event.data.y === "number") {
     if (state.tab in state.scroll) state.scroll[state.tab] = event.data.y;
@@ -299,6 +320,7 @@ async function main() {
     ui.theme.addEventListener("change", restyle);
     ui.scheme.addEventListener("change", () => {
       ui.frame.style.colorScheme = ui.scheme.value;
+      if (state.pending) state.pending.frame.style.colorScheme = ui.scheme.value;
     });
     ui.scheme.value = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     ui.frame.style.colorScheme = ui.scheme.value;
