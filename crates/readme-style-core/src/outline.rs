@@ -139,11 +139,14 @@ impl Outline {
         // A README without a title may open with a preamble (sponsors, a notice) before the image
         // that starts its hero; the hero starts at that image when it comes early.
         let preamble = if title.is_none() {
+            // Comments are invisible, so they do not count among the first three blocks.
             intro
                 .iter()
+                .enumerate()
+                .filter(|(_, (_, b))| !is_comment(b))
                 .take(3)
-                .position(|(_, b)| is_media(b) && !b.images.is_empty())
-                .unwrap_or(0)
+                .find(|(_, (_, b))| is_media(b) && !b.images.is_empty())
+                .map_or(0, |(i, _)| i)
         } else {
             0
         };

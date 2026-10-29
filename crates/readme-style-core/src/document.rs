@@ -7,6 +7,9 @@
 //! comrak arena is dropped at the end of [`Document::parse`]; everything kept is owned.
 
 use std::cell::OnceCell;
+use std::sync::LazyLock;
+
+use regex::Regex;
 
 use comrak::Arena;
 use comrak::nodes::{AstNode, NodeValue};
@@ -86,6 +89,9 @@ pub(crate) struct Document {
     pub(crate) wrapper_lines: Vec<usize>,
     managed: Vec<bool>,
     pub(crate) diagnostics: Vec<Diagnostic>,
+    /// First line of a fenced code block that is never closed: everything after it is code, so
+    /// nothing may be placed after it.
+    pub(crate) open_fence: Option<usize>,
     outline: OnceCell<Outline>,
 }
 
@@ -259,11 +265,16 @@ impl Document {
         let root = comrak::parse_document(&arena, text, &options);
 
         let mut in_code = vec![false; count];
+        let mut open_fence: Option<usize> = None;
         for node in root.descendants() {
-            if matches!(node.data.borrow().value, NodeValue::CodeBlock(_)) {
+            if let NodeValue::CodeBlock(code) = &node.data.borrow().value {
                 let (start, end) = lines_of(node);
                 for flag in in_code.iter_mut().take(end.min(count)).skip(start) {
                     *flag = true;
+                }
+                let top_level = node.parent().is_some_and(|p| p.same_node(root));
+                if code.fenced && !code.closed && top_level {
+                    open_fence = Some(open_fence.map_or(start, |f| f.min(start)));
                 }
             }
         }
@@ -374,6 +385,7 @@ impl Document {
             wrapper_lines: scan.wrappers,
             managed,
             diagnostics: scan.diagnostics,
+            open_fence,
             outline: OnceCell::new(),
         }
     }
@@ -411,13 +423,24 @@ impl Document {
         self.outline.get_or_init(|| Outline::new(self))
     }
 
-    /// Whether deleting lines `start..end` needs a separator to keep what follows in place: an
-    /// indented line after them would otherwise join a list item, footnote or indented code above
-    /// (blank lines end neither, while the deleted marker comments did).
+    /// Whether deleting lines `start..end` needs a separator to keep what follows in place.
+    /// Blank lines end neither a list nor indented code, while the deleted marker comments did:
+    /// without one, an indented line would join the list item, footnote or code block above, and
+    /// a list would merge with the list above it.
     pub(crate) fn needs_separator(&self, start: usize, end: usize) -> bool {
+        static LIST_ITEM: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(r"^ {0,3}(?:[-*+]|\d{1,9}[.)])(?:[ \t]|$)").expect("valid regex"));
         let indented = |line: &str| line.starts_with('\t') || line.starts_with("    ");
-        let next = (end..self.lines.len()).find(|&i| !self.lines[i].trim().is_empty());
-        if !next.is_some_and(|i| indented(&self.lines[i]) && !self.is_managed(i)) {
+        let Some(next) = (end..self.lines.len()).find(|&i| !self.lines[i].trim().is_empty()) else {
+            return false;
+        };
+        if self.is_managed(next) {
+            // More generated lines follow; they keep the blocks apart or decide when deleted.
+            return false;
+        }
+        let next_indented = indented(&self.lines[next]);
+        let next_is_item = LIST_ITEM.is_match(&self.lines[next]);
+        if !next_indented && !next_is_item {
             return false;
         }
         let Some(above) = (0..start)
@@ -431,10 +454,21 @@ impl Document {
         let Some(previous) = self.blocks.iter().find(|b| b.start <= above && above < b.end) else {
             return true;
         };
-        matches!(
-            previous.kind,
-            BlockKind::List | BlockKind::Footnote | BlockKind::Code { fenced: false } | BlockKind::Other
-        )
+        match previous.kind {
+            BlockKind::List => true,
+            BlockKind::Footnote | BlockKind::Code { fenced: false } | BlockKind::Other => next_indented,
+            _ => false,
+        }
+    }
+
+    /// Whether a line shows nothing: blank, or only an HTML comment.
+    pub(crate) fn is_invisible(&self, line: usize) -> bool {
+        let text = self.lines[line].trim();
+        text.is_empty()
+            || text
+                .strip_prefix("<!--")
+                .and_then(|rest| rest.find("-->"))
+                .is_some_and(|i| i + 3 == text.len() - 4)
     }
 
     /// Whether lines `start..=end` sit inside one block the user wrote, as when raw HTML without
@@ -598,6 +632,28 @@ mod tests {
         let starts: Vec<usize> = doc.blocks.iter().map(|b| b.start).collect();
         assert_eq!(starts, [0, 2, 4]);
         assert_eq!(doc.blocks[1].kind, BlockKind::Footnote);
+    }
+
+    #[test]
+    fn separators_keep_lists_and_indented_code_in_place() {
+        let doc = Document::parse("- a\n\nX\n\n- b\n\npara\n\nY\n\n- c\n");
+        assert!(doc.needs_separator(2, 3), "a list after a list would merge");
+        assert!(
+            !doc.needs_separator(7, 8),
+            "a list after a paragraph starts fresh"
+        );
+        let doc = Document::parse("para\n\nX\n\n    code\n");
+        assert!(
+            !doc.needs_separator(2, 3),
+            "indented code after a paragraph stays code"
+        );
+    }
+
+    #[test]
+    fn invisible_lines() {
+        let doc = Document::parse("\n<!-- -->\n<!---->\n<!-- a --> text\ntext\n");
+        let invisible: Vec<bool> = (0..5).map(|i| doc.is_invisible(i)).collect();
+        assert_eq!(invisible, [true, true, true, false, false]);
     }
 
     #[test]

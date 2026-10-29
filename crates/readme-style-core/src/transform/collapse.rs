@@ -51,14 +51,16 @@ pub(super) fn apply(doc: &Document, cx: &mut Context<'_>) -> Option<Vec<String>>
         let body = start..end;
         let lines = body
             .clone()
-            .filter(|&j| !doc.lines[j].trim().is_empty() && !back_to_top(j))
+            .filter(|&j| !doc.is_invisible(j) && !back_to_top(j))
             .count();
         let touches_managed = body.clone().any(|j| doc.is_managed(j) && !back_to_top(j));
         let already_folded = doc
             .lines
             .get(start)
             .is_some_and(|l| l.trim_start().to_ascii_lowercase().starts_with("<details"));
-        if lines < settings.min_lines || touches_managed || already_folded {
+        // A fence that never closes runs to the end: a closing line after it would be code.
+        let open_fence = doc.open_fence.is_some_and(|f| f < end);
+        if lines < settings.min_lines || touches_managed || already_folded || open_fence {
             continue;
         }
         ed.insert(

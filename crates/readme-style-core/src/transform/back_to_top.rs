@@ -24,9 +24,10 @@ pub(super) fn apply(doc: &Document, cx: &mut Context<'_>) -> Option<Vec<String>>
             let next = starts.get(i + 1).copied().unwrap_or(doc.lines.len());
             let end = content_end(doc, start, next);
             let lines = (start..end)
-                .filter(|&j| !doc.lines[j].trim().is_empty() && !doc.is_managed(j))
+                .filter(|&j| !doc.is_invisible(j) && !doc.is_managed(j))
                 .count();
-            if lines >= settings.min_lines {
+            // After a fence that never closes, the link would be code.
+            if lines >= settings.min_lines && doc.open_fence.is_none_or(|f| f >= end) {
                 placements.push((end, vec![link.clone()]));
             }
         }
