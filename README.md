@@ -78,9 +78,16 @@ readme-style --explain          # show what was detected, and why each badge is 
 | `cli` | Centered, terminal look | Package, CI, runtime, license, in one monochrome palette | Key-cap nav | Folded changelog and FAQ |
 | `docs` | Left aligned, for long READMEs | Package, CI, coverage, docs, license | Three-level contents | Back-to-top links, folded release notes |
 
-The [examples](examples/) folder shows each theme on three projects, next to the original. This
-README is styled with `startup`. Themes are TOML: you can override any setting, or define your own
+This README is styled with `startup`. Themes are TOML: you can override any setting, or define your own
 theme that extends a built-in one. See [docs/themes.md](docs/themes.md).
+
+## Before and after
+
+[examples/](examples/README.md) shows three projects styled with every theme: what changed, the
+rendered result and the exact diff. On a research repository, for instance, `ml-research` adds a
+centered header with arXiv, project page, Hugging Face, Colab, Python and license badges (inferred
+from links the README already had), a folded table of contents and a folded news section, and turns
+a "**Note:**" into an alert. Nothing else in the file changes.
 
 ## What it changes
 
