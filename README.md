@@ -179,7 +179,8 @@ readme-style suggest tagline --base-url http://127.0.0.1:8000/v1   # a local Ope
 
 It uses Anthropic's API when `ANTHROPIC_API_KEY` is set (Claude Opus 5.5 by default, with
 refusal fallbacks), or any OpenAI-compatible server such as vLLM, Ollama or LM Studio; set it with
-flags or an `[ai]` table in the configuration. This is the only command that uses the network.
+flags, the environment, or an `[ai]` table in the configuration (which may pick the provider and
+model, never the host or the key). This is the only command that uses the network.
 
 ## Use it in CI
 

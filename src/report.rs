@@ -205,7 +205,8 @@ impl Printer {
             let _ = out.write_all(explain(report).as_bytes());
         }
         if let Some(output) = &report.output {
-            let _ = out.write_all(output.as_bytes());
+            // The README itself goes out byte for byte: no color handling may touch it.
+            let _ = std::io::stdout().lock().write_all(output.as_bytes());
             return;
         }
         let theme = report.theme.as_deref().unwrap_or("-");

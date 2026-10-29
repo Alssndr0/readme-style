@@ -243,6 +243,18 @@ impl Themes {
 
     /// Add a custom theme. It extends `base` unless it says otherwise.
     pub fn define(&mut self, name: &str, table: Table) -> Result<(), ThemeError> {
+        // The name is recorded in markers (`theme=NAME`), which allow only these characters.
+        let valid = name.chars().next().is_some_and(|c| c.is_ascii_alphanumeric())
+            && name
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'));
+        if !valid {
+            return Err(ThemeError::Invalid {
+                name: name.to_owned(),
+                message: "theme names use letters, digits, '.', '_' and '-', starting with a letter or digit"
+                    .into(),
+            });
+        }
         if BUILTIN.iter().any(|(builtin, _)| *builtin == name) {
             return Err(ThemeError::Shadowed(name.to_owned()));
         }

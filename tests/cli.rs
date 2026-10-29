@@ -192,3 +192,37 @@ fn list_themes() {
             .and(predicate::str::contains("docs")),
     );
 }
+
+#[cfg(unix)]
+#[test]
+fn a_symlinked_readme_stays_a_symlink() {
+    let dir = project(&[("docs/README.md", README)]);
+    std::os::unix::fs::symlink("docs/README.md", dir.path().join("README.md")).expect("symlink");
+    cli()
+        .arg("--write")
+        .arg(dir.path().join("README.md"))
+        .assert()
+        .success();
+    assert!(
+        fs::symlink_metadata(dir.path().join("README.md"))
+            .expect("meta")
+            .file_type()
+            .is_symlink()
+    );
+    assert!(read(&dir.path().join("docs/README.md")).contains("> [!NOTE]"));
+}
+
+#[test]
+fn stdout_keeps_escape_bytes() {
+    let source = "# demo\n\n```\n\u{1b}[32mgreen\u{1b}[0m\n```\n";
+    let dir = project(&[("README.md", source)]);
+    let output = cli()
+        .arg("--stdout")
+        .arg(dir.path())
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    assert_eq!(String::from_utf8(output).expect("utf-8"), source);
+}

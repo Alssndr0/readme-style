@@ -102,17 +102,35 @@ fn string(table: &Table, key: &str) -> Option<String> {
 }
 
 impl Inspector<'_> {
-    /// The first of `names` found from the README folder up to the root.
-    fn search(&self, names: &[&str]) -> Option<PathBuf> {
+    /// The first of `names` found from the README folder up to the root. Names are matched
+    /// against directory listings, so the result (and the real file name) is the same on every
+    /// file system; `any_case` also accepts `License` for `LICENSE`.
+    fn find(&self, names: &[&str], any_case: bool) -> Option<PathBuf> {
         for dir in self.readme_dir.ancestors() {
-            if let Some(found) = names.iter().map(|n| dir.join(n)).find(|p| self.fs.is_file(p)) {
-                return Some(found);
+            let entries = self.fs.list_dir(dir);
+            for name in names {
+                let found = entries.iter().find(|path| {
+                    path.file_name().and_then(|n| n.to_str()).is_some_and(|actual| {
+                        if any_case {
+                            actual.eq_ignore_ascii_case(name)
+                        } else {
+                            actual == *name
+                        }
+                    }) && self.fs.is_file(path)
+                });
+                if let Some(path) = found {
+                    return Some(path.clone());
+                }
             }
             if dir == self.root {
                 break;
             }
         }
         None
+    }
+
+    fn search(&self, names: &[&str]) -> Option<PathBuf> {
+        self.find(names, false)
     }
 
     fn toml(&self, name: &str) -> Option<Table> {
@@ -279,7 +297,7 @@ impl Inspector<'_> {
     }
 
     fn license(&mut self) {
-        let Some(path) = self.search(LICENSE_FILES) else {
+        let Some(path) = self.find(LICENSE_FILES, true) else {
             return;
         };
         self.facts.license_file = Some(self.rel(&path));
@@ -499,6 +517,19 @@ line-length = 100
         assert!(
             !facts.rust_library,
             "a binary-only crate has no docs.rs page worth a badge"
+        );
+    }
+
+    #[test]
+    fn license_files_match_any_case_and_keep_their_real_name() {
+        let fs = MemoryFs::new().with(
+            "/p/License",
+            "MIT License\nPermission is hereby granted, free of charge",
+        );
+        let facts = inspect(&fs, readme(), &Overrides::default());
+        assert_eq!(
+            (facts.license.as_deref(), facts.license_file.as_deref()),
+            (Some("MIT"), Some("License"))
         );
     }
 

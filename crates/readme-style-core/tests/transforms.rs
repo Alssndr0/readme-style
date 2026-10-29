@@ -30,6 +30,37 @@ fn callouts_from_quotes_and_paragraphs() {
 }
 
 #[test]
+fn callout_text_keeps_its_meaning() {
+    let cases = [
+        (
+            "**Note:** # of retries is configurable.",
+            "> [!NOTE]\n> \\# of retries is configurable.",
+        ),
+        (
+            "**Note:** 1. Run setup first.",
+            "> [!NOTE]\n> 1\\. Run setup first.",
+        ),
+        ("> **Warning:** - do not", "> [!WARNING]\n> \\- do not"),
+        ("**Note:**\n2. step", "> [!NOTE]\n> 2\\. step"),
+        ("**Note:**\n    x", "> [!NOTE]\n> x"),
+        ("> **Note**\n> 2. step", "> [!NOTE]\n> 2\\. step"),
+    ];
+    for (source, expected) in cases {
+        assert_eq!(
+            run(&format!("{source}\n"), "minimal"),
+            format!("{expected}\n"),
+            "{source}"
+        );
+    }
+    let html = "Note: <div>x</div> hello\n";
+    assert_eq!(
+        run(html, "minimal"),
+        html,
+        "raw HTML at the start of a line would change meaning"
+    );
+}
+
+#[test]
 fn callouts_leave_other_text_alone() {
     let untouched = [
         "> [!NOTE]\n> already an alert",
@@ -251,6 +282,19 @@ fn a_logo_after_a_link_definition_keeps_the_definition() {
 }
 
 #[test]
+fn a_logo_with_a_non_ascii_name_gets_its_dark_variant() {
+    let project = ProjectFacts {
+        logo: Some(Logo {
+            light: "assets/logo-ü.svg".into(),
+            dark: Some("assets/logo-ü-dark.svg".into()),
+        }),
+        ..ProjectFacts::default()
+    };
+    let out = run_with("![logo](assets/logo-ü.svg)\n\n# T\n", &theme("minimal"), &project).output;
+    assert!(out.contains(r#"srcset="assets/logo-%C3%BC-dark.svg""#), "{out}");
+}
+
+#[test]
 fn nav_prefers_well_known_sections() {
     let names = [
         "Intro",
@@ -305,4 +349,20 @@ fn a_notice_above_the_title_does_not_hide_it() {
 fn the_theme_is_recorded_in_markers() {
     let out = run_with("# T\n", &theme("cli"), &facts()).output;
     assert_eq!(readme_style_core::recorded_theme(&out).as_deref(), Some("cli"));
+}
+
+#[test]
+fn front_matter_stays_first_and_untouched() {
+    let readme = "---\nlicense: mit\nlanguage: en\n---\n\n# Model\n\n## A\n\n## B\n\n## C\n\n## D\n";
+    for name in ["minimal", "startup", "docs"] {
+        let out = run_with(readme, &theme(name), &facts()).output;
+        assert!(
+            out.starts_with("---\nlicense: mit\nlanguage: en\n---\n"),
+            "{name}: {out}"
+        );
+        assert!(
+            !out.contains("license: mit language: en]"),
+            "{name}: front matter is not a heading"
+        );
+    }
 }

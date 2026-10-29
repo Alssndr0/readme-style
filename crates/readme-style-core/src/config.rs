@@ -161,28 +161,34 @@ pub fn discover(fs: &dyn FileSystem, readme: &Path) -> Result<Config, ConfigErro
 }
 
 fn read_in(fs: &dyn FileSystem, dir: &Path) -> Result<Option<(Table, String)>, ConfigError> {
-    let parse_toml = |path: &Path| -> Result<Option<Table>, ConfigError> {
+    // A manifest that does not parse only matters when it holds readme-style settings: an
+    // unrelated mistake in package.json must not stop the README from being styled.
+    let parse_toml = |path: &Path, required: bool| -> Result<Option<Table>, ConfigError> {
         let Some(text) = fs.read_to_string(path) else {
             return Ok(None);
         };
-        text.parse::<Table>().map(Some).map_err(|e| ConfigError {
-            file: path.display().to_string(),
-            message: e.message().to_owned(),
-        })
+        match text.parse::<Table>() {
+            Ok(table) => Ok(Some(table)),
+            Err(_) if !required && !text.contains("readme-style") => Ok(None),
+            Err(e) => Err(ConfigError {
+                file: path.display().to_string(),
+                message: e.message().to_owned(),
+            }),
+        }
     };
     let dotfile = dir.join(".readme-style.toml");
-    if let Some(table) = parse_toml(&dotfile)? {
+    if let Some(table) = parse_toml(&dotfile, true)? {
         return Ok(Some((table, dotfile.display().to_string())));
     }
     let pyproject = dir.join("pyproject.toml");
-    if let Some(table) = parse_toml(&pyproject)?.and_then(|t| nested(t, &["tool", "readme-style"])) {
+    if let Some(table) = parse_toml(&pyproject, false)?.and_then(|t| nested(t, &["tool", "readme-style"])) {
         return Ok(Some((
             table,
             format!("{} [tool.readme-style]", pyproject.display()),
         )));
     }
     let cargo = dir.join("Cargo.toml");
-    if let Some(manifest) = parse_toml(&cargo)? {
+    if let Some(manifest) = parse_toml(&cargo, false)? {
         for (section, keys) in [
             ("package", ["package", "metadata", "readme-style"]),
             ("workspace", ["workspace", "metadata", "readme-style"]),
@@ -198,10 +204,16 @@ fn read_in(fs: &dyn FileSystem, dir: &Path) -> Result<Option<(Table, String)>, C
     let package = dir.join("package.json");
     if let Some(text) = fs.read_to_string(&package) {
         let source = format!("{} \"readme-style\"", package.display());
-        let json: serde_json::Value = serde_json::from_str(&text).map_err(|e| ConfigError {
-            file: package.display().to_string(),
-            message: e.to_string(),
-        })?;
+        let json: serde_json::Value = match serde_json::from_str(&text) {
+            Ok(json) => json,
+            Err(_) if !text.contains("readme-style") => return Ok(None),
+            Err(e) => {
+                return Err(ConfigError {
+                    file: package.display().to_string(),
+                    message: e.to_string(),
+                });
+            }
+        };
         if let Some(value) = json.get("readme-style") {
             let table = Table::try_from(value.clone()).map_err(|e| ConfigError {
                 file: source.clone(),
@@ -271,6 +283,17 @@ mod tests {
         assert_eq!(
             (overrides.repo.as_deref(), overrides.logo.as_deref()),
             (Some("me/x"), Some("art/mark.svg"))
+        );
+    }
+
+    #[test]
+    fn an_unrelated_broken_manifest_is_ignored() {
+        let fs = MemoryFs::new().with("/p/package.json", "{\"name\": \"x\",}");
+        assert!(discover(&fs, readme()).expect("ignored").source.is_none());
+        let fs = MemoryFs::new().with("/p/package.json", "{\"readme-style\": {\"theme\": \"cli\"},}");
+        assert!(
+            discover(&fs, readme()).is_err(),
+            "a broken file with our settings is reported"
         );
     }
 

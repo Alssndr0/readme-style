@@ -55,6 +55,38 @@ fn lead(text: &str) -> Option<(String, String)> {
     ))
 }
 
+static ORDERED: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(\d{1,9})([.)])(\s.*)?$").expect("valid regex"));
+static RULE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(?:[-*_][ \t]*){3,}$").expect("valid regex"));
+
+/// `text` made safe as the first line of the alert's paragraph. Moving text to the start of a
+/// line can open another kind of block (`# of retries` would become a heading); a backslash
+/// escape keeps the same characters on screen. `None` when no escape keeps the meaning.
+fn as_paragraph_start(text: &str) -> Option<String> {
+    let text = text.trim_start();
+    if text.starts_with(['<', '|'])
+        || text.starts_with("```")
+        || text.starts_with("~~~")
+        || text.starts_with("[!")
+    {
+        return None;
+    }
+    if let Some(item) = ORDERED.captures(text) {
+        return Some(format!(
+            "{}\\{}{}",
+            &item[1],
+            &item[2],
+            item.get(3).map_or("", |m| m.as_str())
+        ));
+    }
+    let list_marker = text.starts_with(['-', '+', '*']) && text[1..].starts_with([' ', '\t'])
+        || matches!(text, "-" | "+" | "*");
+    if text.starts_with(['#', '>', '=']) || list_marker || RULE.is_match(text) {
+        return Some(format!("\\{text}"));
+    }
+    Some(text.to_owned())
+}
+
 fn quote(doc: &Document, block: &Block, ed: &mut Editor<'_>) {
     let Some(first) = QUOTE.captures(&doc.lines[block.start]) else {
         return;
@@ -64,24 +96,31 @@ fn quote(doc: &Document, block: &Block, ed: &mut Editor<'_>) {
         return;
     }
     let Some((kind, rest)) = lead(content) else { return };
-    if rest.is_empty() {
-        // The alert's text must continue on the next line, or the lead-in was its own paragraph.
-        let continues = doc
-            .lines
-            .get(block.start + 1)
-            .filter(|_| block.start + 1 < block.end)
-            .and_then(|line| QUOTE.captures(line))
-            .is_some_and(|c| !c[2].trim().is_empty());
-        if !continues {
-            return;
-        }
-    }
     let prefix = format!("{} ", first[1].trim_end());
     let mut lines = vec![format!("{prefix}[!{kind}]")];
-    if !rest.is_empty() {
-        lines.push(format!("{prefix}{rest}"));
+    let mut end = block.start + 1;
+    if rest.is_empty() {
+        // The next line opens the alert's text, and must still read as a paragraph.
+        let Some(next) = doc
+            .lines
+            .get(end)
+            .filter(|_| end < block.end)
+            .and_then(|l| QUOTE.captures(l))
+        else {
+            return;
+        };
+        let Some(opening) = as_paragraph_start(&next[2]).filter(|o| !o.is_empty()) else {
+            return;
+        };
+        lines.push(format!("{} {opening}", next[1].trim_end()));
+        end += 1;
+    } else {
+        let Some(opening) = as_paragraph_start(&rest) else {
+            return;
+        };
+        lines.push(format!("{prefix}{opening}"));
     }
-    ed.replace_exact(block.start, block.start + 1, lines);
+    ed.replace_exact(block.start, end, lines);
 }
 
 fn paragraph(doc: &Document, block: &Block, ed: &mut Editor<'_>) {
@@ -89,20 +128,44 @@ fn paragraph(doc: &Document, block: &Block, ed: &mut Editor<'_>) {
     let Some((kind, rest)) = lead(&lines[0]) else {
         return;
     };
-    if rest.is_empty() && lines.len() == 1 {
+    let (opening, continuation) = if rest.is_empty() {
+        match lines.get(1) {
+            Some(next) => (next.as_str(), &lines[2..]),
+            None => return,
+        }
+    } else {
+        (rest.as_str(), &lines[1..])
+    };
+    let Some(opening) = as_paragraph_start(opening) else {
         return;
-    }
-    let mut new = vec![format!("> [!{kind}]")];
-    if !rest.is_empty() {
-        new.push(format!("> {rest}"));
-    }
-    new.extend(lines[1..].iter().map(|line| format!("> {line}")));
+    };
+    let mut new = vec![format!("> [!{kind}]"), format!("> {opening}")];
+    // Continuation lines stay in the paragraph; their indentation never mattered.
+    new.extend(continuation.iter().map(|line| format!("> {}", line.trim_start())));
     ed.replace(block.start, block.end, new);
 }
 
 #[cfg(test)]
 mod tests {
-    use super::lead;
+    use super::{as_paragraph_start, lead};
+
+    #[test]
+    fn openings_stay_paragraphs() {
+        let cases = [
+            ("# of retries", Some("\\# of retries")),
+            ("1. Run setup first.", Some("1\\. Run setup first.")),
+            ("- do not", Some("\\- do not")),
+            ("> quoted", Some("\\> quoted")),
+            ("***", Some("\\***")),
+            ("*emphasis* stays", Some("*emphasis* stays")),
+            ("2024 was good", Some("2024 was good")),
+            ("<div>x</div> hello", None),
+            ("```rust", None),
+        ];
+        for (text, expected) in cases {
+            assert_eq!(as_paragraph_start(text).as_deref(), expected, "{text}");
+        }
+    }
 
     #[test]
     fn lead_ins() {

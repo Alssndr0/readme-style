@@ -10,9 +10,6 @@ use crate::edit::Editor;
 use crate::outline::is_toc_title;
 use crate::theme::TocStyle;
 
-static IMAGE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"!\[[^\]]*\]\([^)]*\)").expect("valid regex"));
-static LINK: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\[([^\]]*)\]\([^)]*\)").expect("valid regex"));
-static TAG: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"<[^>]+>").expect("valid regex"));
 /// Sections whose subheadings are entries (versions, dates, questions), not structure.
 static ENTRY_LISTS: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?i)^\W*(change ?log|changes|release notes|release history|history|news|updates|what'?s new|faq|frequently asked questions)\W*$")
@@ -20,19 +17,6 @@ static ENTRY_LISTS: LazyLock<Regex> = LazyLock::new(|| {
 });
 /// Past this many entries a list stops helping; only top-level sections are listed then.
 const MAX_ENTRIES: usize = 24;
-
-/// The heading's own Markdown, minus links and images, which cannot nest inside a link.
-fn entry_text(heading: &Heading) -> String {
-    let text = IMAGE.replace_all(&heading.source, "");
-    let text = LINK.replace_all(&text, "$1");
-    let text = TAG.replace_all(&text, "");
-    let text = text.trim();
-    if text.is_empty() {
-        heading.text.clone()
-    } else {
-        text.to_owned()
-    }
-}
 
 fn render(doc: &Document, cx: &Context<'_>) -> Vec<String> {
     let settings = &cx.theme.toc;
@@ -61,7 +45,7 @@ fn render(doc: &Document, cx: &Context<'_>) -> Vec<String> {
     }
     let items = entries.iter().map(|h| {
         let indent = "  ".repeat(usize::from(h.level - level));
-        format!("{indent}- [{}](#{})", entry_text(h), h.slug)
+        format!("{indent}- [{}](#{})", h.label, h.slug)
     });
     match settings.style {
         TocStyle::None => Vec::new(),

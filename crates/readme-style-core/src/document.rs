@@ -72,8 +72,9 @@ pub(crate) struct Heading {
     pub(crate) end: usize,
     /// Text content, as GitHub uses for the anchor.
     pub(crate) text: String,
-    /// The heading's own inline Markdown.
-    pub(crate) source: String,
+    /// The heading as Markdown fit for link text: text escaped, code spans kept, links reduced
+    /// to their text, images and raw HTML dropped.
+    pub(crate) label: String,
     pub(crate) slug: String,
     pub(crate) managed: bool,
 }
@@ -213,6 +214,59 @@ impl Collector {
     }
 }
 
+/// Inline content as Markdown that can sit inside `[...]`: text is escaped where it could
+/// change meaning, code spans keep their backticks, links become their text, and images, raw
+/// HTML and footnote marks are dropped.
+fn link_label<'a>(node: &'a AstNode<'a>) -> String {
+    fn walk<'a>(node: &'a AstNode<'a>, out: &mut String) {
+        for child in node.children() {
+            match &child.data.borrow().value {
+                NodeValue::Text(text) => escape_label_text(text, out),
+                NodeValue::Code(code) => out.push_str(&code_span(&code.literal)),
+                NodeValue::SoftBreak | NodeValue::LineBreak => out.push(' '),
+                NodeValue::Image(_) | NodeValue::HtmlInline(_) | NodeValue::FootnoteReference(_) => {}
+                _ => walk(child, out),
+            }
+        }
+    }
+    let mut out = String::new();
+    walk(node, &mut out);
+    out.trim().to_owned()
+}
+
+fn escape_label_text(text: &str, out: &mut String) {
+    let chars: Vec<char> = text.chars().collect();
+    for (i, &c) in chars.iter().enumerate() {
+        let before = i.checked_sub(1).and_then(|j| chars.get(j)).copied();
+        let after = chars.get(i + 1).copied();
+        let word = |x: Option<char>| x.is_some_and(char::is_alphanumeric);
+        let escape = match c {
+            '\\' | '`' | '*' | '[' | ']' | '<' | '~' => true,
+            // Inside a word an underscore cannot start emphasis.
+            '_' => !(word(before) && word(after)),
+            // Only an entity-like `&name;` or `&#..;` could be read as one.
+            '&' => after.is_some_and(|a| a.is_ascii_alphanumeric() || a == '#'),
+            _ => false,
+        };
+        if escape {
+            out.push('\\');
+        }
+        out.push(c);
+    }
+}
+
+/// A code span for `code`, fenced with more backticks than any run inside it.
+fn code_span(code: &str) -> String {
+    let longest = code.split(|c| c != '`').map(str::len).max().unwrap_or(0);
+    let fence = "`".repeat(longest + 1);
+    let pad = if code.starts_with('`') || code.ends_with('`') {
+        " "
+    } else {
+        ""
+    };
+    format!("{fence}{pad}{code}{pad}{fence}")
+}
+
 /// A paragraph made only of one image, or one link around one image.
 fn sole_image<'a>(paragraph: &'a AstNode<'a>) -> Option<SoleImage> {
     let significant = |node: &'a AstNode<'a>| -> Vec<&'a AstNode<'a>> {
@@ -311,7 +365,7 @@ impl Document {
                     level,
                     start,
                     end,
-                    source: heading_source(&lines, start, end),
+                    label: link_label(node),
                     text,
                     slug,
                     managed: is_managed(start),
@@ -510,30 +564,6 @@ impl Document {
     }
 }
 
-/// The inline Markdown of a heading: the text after `#`s, or the lines above a setext underline.
-fn heading_source(lines: &[String], start: usize, end: usize) -> String {
-    let first = lines.get(start).map_or("", String::as_str);
-    let trimmed = first.trim_start();
-    if trimmed.starts_with('#') {
-        let content = trimmed.trim_start_matches('#').trim();
-        // An optional closing run of #s counts only when whitespace precedes it ("# C#" keeps its #).
-        let without_closing = content.trim_end_matches('#');
-        if without_closing.is_empty() {
-            return String::new();
-        }
-        if without_closing.ends_with([' ', '\t']) {
-            return without_closing.trim_end().to_owned();
-        }
-        return content.to_owned();
-    }
-    let content_end = end.saturating_sub(1).max(start + 1).min(lines.len());
-    lines[start..content_end]
-        .iter()
-        .map(|l| l.trim())
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -559,17 +589,24 @@ mod tests {
         let doc = Document::parse("# Usage\n\n> ## Usage\n\n## Usage `x`\n");
         let slugs: Vec<_> = doc.headings.iter().map(|h| h.slug.as_str()).collect();
         assert_eq!(slugs, ["usage", "usage-x"]);
-        assert_eq!(doc.headings[1].source, "Usage `x`");
+        assert_eq!(doc.headings[1].label, "Usage `x`");
     }
 
     #[test]
-    fn heading_sources() {
-        let lines: Vec<String> = ["## Install ##", "# C#", "Long", "title", "---"]
-            .map(str::to_owned)
-            .to_vec();
-        assert_eq!(heading_source(&lines, 0, 1), "Install");
-        assert_eq!(heading_source(&lines, 1, 2), "C#");
-        assert_eq!(heading_source(&lines, 2, 5), "Long title");
+    fn labels_survive_code_html_and_links() {
+        let doc = Document::parse(
+            "## `Vec<T>` helpers\n\n## The `<Button>` component\n\n## [Docs](https://x) and <b>bold</b>\n\n## Uses `` ` `` ticks & a_b\n",
+        );
+        let labels: Vec<_> = doc.headings.iter().map(|h| h.label.as_str()).collect();
+        assert_eq!(
+            labels,
+            [
+                "`Vec<T>` helpers",
+                "The `<Button>` component",
+                "Docs and bold",
+                "Uses `` ` `` ticks & a_b"
+            ]
+        );
     }
 
     #[test]

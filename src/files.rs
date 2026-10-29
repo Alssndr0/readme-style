@@ -23,18 +23,36 @@ pub(crate) fn find_readme(path: &Path) -> Option<PathBuf> {
     path.is_file().then(|| path.to_path_buf())
 }
 
-/// Replace `path` with `content` without ever leaving a half-written file, keeping its permissions.
-pub(crate) fn write_atomic(path: &Path, content: &str) -> io::Result<()> {
-    let name = path
+/// Replace the README at `path` with `content`, never leaving a half-written file.
+///
+/// A symbolic link is followed, so the file it points to is updated and the link stays. A file
+/// with several hard links is rewritten in place, since replacing it would detach the others.
+pub(crate) fn write_readme(path: &Path, content: &str) -> io::Result<()> {
+    let target = fs::canonicalize(path)?;
+    if hard_linked(&target)? {
+        return fs::write(&target, content);
+    }
+    let name = target
         .file_name()
         .map_or_else(|| "README".into(), |n| n.to_string_lossy().into_owned());
-    let temp = path.with_file_name(format!(".{name}.readme-style.tmp"));
+    let temp = target.with_file_name(format!(".{name}.readme-style.tmp"));
     fs::write(&temp, content)?;
-    let result = fs::metadata(path)
+    let result = fs::metadata(&target)
         .and_then(|meta| fs::set_permissions(&temp, meta.permissions()))
-        .and_then(|()| fs::rename(&temp, path));
+        .and_then(|()| fs::rename(&temp, &target));
     if result.is_err() {
         let _ = fs::remove_file(&temp);
     }
     result
+}
+
+#[cfg(unix)]
+fn hard_linked(path: &Path) -> io::Result<bool> {
+    use std::os::unix::fs::MetadataExt as _;
+    Ok(fs::metadata(path)?.nlink() > 1)
+}
+
+#[cfg(not(unix))]
+fn hard_linked(_: &Path) -> io::Result<bool> {
+    Ok(false)
 }

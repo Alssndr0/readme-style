@@ -12,7 +12,7 @@ use readme_style_core::theme::{DEFAULT_THEME, Theme};
 use readme_style_core::{Outcome, StyleError, recorded_theme, style};
 
 use crate::args::{Args, Format};
-use crate::files::{find_readme, write_atomic};
+use crate::files::{find_readme, write_readme};
 use crate::report::{self, FileReport, Printer, Status};
 
 /// Everything needed to style one README.
@@ -145,7 +145,7 @@ fn process(path: &Path, args: &Args) -> FileReport {
         false
     };
     if apply {
-        if let Err(e) = write_atomic(&job.path, &outcome.output) {
+        if let Err(e) = write_readme(&job.path, &outcome.output) {
             return report.failed(Status::Error, format!("cannot write {}: {e}", job.path.display()));
         }
         report.status = Status::Written;

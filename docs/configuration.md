@@ -133,13 +133,15 @@ Only `readme-style suggest` reads this table; styling never uses a model. Flags 
 
 | Key | Default | Meaning |
 |-----|---------|---------|
-| `provider` | detected | `anthropic`, or `openai` for any server with the OpenAI chat-completions API. Without it: `openai` when a base URL is set, then `anthropic` when `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN` is set, then `openai` when `OPENAI_BASE_URL` or `OPENAI_API_KEY` is. |
+| `provider` | detected | `anthropic`, or `openai` for any server with the OpenAI chat-completions API. Without it: `openai` when a base URL is given, then `anthropic` when `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN` is set, then `openai` when `OPENAI_BASE_URL` or `OPENAI_API_KEY` is. |
 | `model` | `claude-opus-5-5` for Anthropic; the server's only model otherwise | The model name. |
-| `base-url` | `https://api.anthropic.com`, or `OPENAI_BASE_URL`, or `https://api.openai.com/v1` | Where to send requests; `ANTHROPIC_BASE_URL` also works for Anthropic. |
-| `api-key-env` | `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` | The environment variable holding the key. Keys are never read from the configuration file. |
 
-```toml
-[ai]                                   # a local vLLM server
-provider = "openai"
-base-url = "http://127.0.0.1:8000/v1"
+Where requests go and which key they carry are deliberately not configurable here, because the
+configuration comes with the repository: a cloned project must not be able to send your key
+elsewhere. Use `--base-url` or the environment instead: `ANTHROPIC_API_KEY` (or
+`ANTHROPIC_AUTH_TOKEN`) and `ANTHROPIC_BASE_URL`, `OPENAI_API_KEY` and `OPENAI_BASE_URL`.
+
+```bash
+export OPENAI_BASE_URL=http://127.0.0.1:8000/v1   # a local vLLM server
+readme-style suggest tagline
 ```

@@ -20,6 +20,7 @@ html5gum.workspace = true
 regex.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+similar.workspace = true
 thiserror.workspace = true
 toml.workspace = true
 unicode-general-category.workspace = true

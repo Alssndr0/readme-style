@@ -25,16 +25,17 @@ const DEFAULT_ANTHROPIC_MODEL: &str = "claude-opus-5-5";
 const DEFAULT_ANTHROPIC_URL: &str = "https://api.anthropic.com";
 const DEFAULT_OPENAI_URL: &str = "https://api.openai.com/v1";
 
-/// The `[ai]` table of the configuration.
+/// The `[ai]` table of the configuration. A configuration file travels with the repository, so
+/// it may choose the provider and the model but never where requests go or which environment
+/// variable holds the key: a cloned repository must not be able to send your key elsewhere.
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 struct AiSettings {
     provider: Option<Provider>,
     model: Option<String>,
-    base_url: Option<String>,
-    /// The environment variable holding the API key.
-    api_key_env: Option<String>,
 }
+
+const UNSAFE_KEYS: &[&str] = &["base-url", "api-key-env", "api-key"];
 
 #[derive(Debug, Serialize)]
 struct Report {
@@ -50,8 +51,7 @@ fn env(name: &str) -> Option<String> {
 
 /// Which model to ask: flags first, then the `[ai]` configuration, then the environment.
 fn resolve(args: &SuggestArgs, settings: &AiSettings) -> Result<Model, String> {
-    let base_url = args.base_url.clone().or_else(|| settings.base_url.clone());
-    let key_env = settings.api_key_env.as_deref();
+    let base_url = args.base_url.clone();
     let provider = args.provider.or(settings.provider).or_else(|| {
         if base_url.is_some() {
             Some(Provider::Openai)
@@ -71,7 +71,7 @@ fn resolve(args: &SuggestArgs, settings: &AiSettings) -> Result<Model, String> {
                 .into(),
         ),
         Some(Provider::Anthropic) => {
-            let credential = match key_env.and_then(env).or_else(|| env("ANTHROPIC_API_KEY")) {
+            let credential = match env("ANTHROPIC_API_KEY") {
                 Some(key) => Credential::ApiKey(key),
                 None => Credential::AuthToken(
                     env("ANTHROPIC_AUTH_TOKEN")
@@ -87,7 +87,7 @@ fn resolve(args: &SuggestArgs, settings: &AiSettings) -> Result<Model, String> {
             })
         }
         Some(Provider::Openai) => {
-            let api_key = key_env.and_then(env).or_else(|| env("OPENAI_API_KEY"));
+            let api_key = env("OPENAI_API_KEY");
             let base_url = base_url
                 .or_else(|| env("OPENAI_BASE_URL"))
                 .unwrap_or_else(|| DEFAULT_OPENAI_URL.into());
@@ -115,6 +115,12 @@ fn run(args: &SuggestArgs) -> Result<(Report, String), String> {
     let readme = readme_path(args.path.as_ref())?;
     let text = fs::read_to_string(&readme).map_err(|e| format!("cannot read {}: {e}", readme.display()))?;
     let config = config::discover(&OsFs, &readme).map_err(|e| e.to_string())?;
+    if let Some(key) = UNSAFE_KEYS.iter().find(|k| config.ai.contains_key(**k)) {
+        return Err(format!(
+            "[ai] {key} cannot be set in a project's configuration, which comes with the repository: \
+             use --base-url, or ANTHROPIC_BASE_URL, OPENAI_BASE_URL and the standard key variables"
+        ));
+    }
     let settings: AiSettings = toml::Value::Table(config.ai.clone())
         .try_into()
         .map_err(|e: toml::de::Error| format!("[ai] configuration: {}", e.message()))?;

@@ -53,17 +53,6 @@ fn metadata_tagline(doc: &Document, description: Option<&str>) -> Option<String>
     Some(crate::markdown::escape_text(description))
 }
 
-fn label(heading: &Heading) -> String {
-    let mut out = String::with_capacity(heading.text.len());
-    for c in heading.text.chars() {
-        if matches!(c, '\\' | '[' | ']' | '*' | '_' | '<' | '`') {
-            out.push('\\');
-        }
-        out.push(c);
-    }
-    out
-}
-
 fn nav_item(style: NavStyle, text: &str, target: &str) -> String {
     let link = format!("[{text}]({target})");
     match style {
@@ -105,7 +94,7 @@ fn nav_bar(doc: &Document, cx: &Context<'_>) -> Option<String> {
     }
     let mut items: Vec<String> = sections
         .iter()
-        .map(|h| nav_item(settings.style, &label(h), &format!("#{}", h.slug)))
+        .map(|h| nav_item(settings.style, &h.label, &format!("#{}", h.slug)))
         .collect();
     if let Some(docs) = docs {
         items.push(nav_item(

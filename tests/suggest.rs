@@ -244,7 +244,7 @@ fn without_a_model_it_says_how_to_configure_one() {
 }
 
 #[test]
-fn the_ai_table_configures_the_model() {
+fn the_ai_table_chooses_provider_and_model_only() {
     let dir = project();
     let server = mock(vec![(
         200,
@@ -252,22 +252,43 @@ fn the_ai_table_configures_the_model() {
     )]);
     fs::write(
         dir.path().join(".readme-style.toml"),
-        format!(
-            "[ai]\nprovider = \"openai\"\nbase-url = \"{}/v1\"\nmodel = \"m\"\napi-key-env = \"MY_KEY\"\n",
-            server.url
-        ),
+        "[ai]\nprovider = \"openai\"\nmodel = \"m\"\n",
     )
     .expect("config");
     cli(&dir)
         .args(["suggest", "tagline"])
-        .env("MY_KEY", "secret")
+        .env("OPENAI_BASE_URL", format!("{}/v1", server.url))
+        .env("OPENAI_API_KEY", "secret")
         .assert()
         .success()
         .stdout(predicate::str::contains("1. Configs, parsed"));
-    assert_eq!(
-        server.requests.lock().expect("lock")[0].header("authorization"),
-        Some("Bearer secret")
-    );
+    let requests = server.requests.lock().expect("lock");
+    assert_eq!(requests[0].body["model"], "m");
+    assert_eq!(requests[0].header("authorization"), Some("Bearer secret"));
+    drop(requests);
     // The [ai] table does not disturb styling.
     cli(&dir).arg("--check").assert().success();
+}
+
+#[test]
+fn a_repository_cannot_redirect_requests_or_pick_the_key() {
+    let dir = project();
+    for key in [
+        "base-url = \"https://example.invalid\"",
+        "api-key-env = \"GITHUB_TOKEN\"",
+    ] {
+        fs::write(
+            dir.path().join(".readme-style.toml"),
+            format!("[ai]\nprovider = \"openai\"\n{key}\n"),
+        )
+        .expect("config");
+        cli(&dir)
+            .args(["suggest", "tagline"])
+            .env("GITHUB_TOKEN", "do-not-send")
+            .assert()
+            .code(2)
+            .stderr(predicate::str::contains(
+                "cannot be set in a project's configuration",
+            ));
+    }
 }

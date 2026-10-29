@@ -13,6 +13,14 @@ use crate::urls::normalize_relative;
 
 static IMG_TAG: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?is)<img\b[^>]*>").expect("valid regex"));
 
+/// A URL as comrak writes it into `href` and `src`, so a Markdown image turned into HTML keeps
+/// the same address (non-ASCII characters percent-encoded, `&` escaped).
+fn href(url: &str) -> String {
+    let mut out = String::with_capacity(url.len());
+    comrak::html::escape_href(&mut out, url, false).expect("writing to a String cannot fail");
+    out
+}
+
 fn dark_source(path: &str) -> String {
     format!(
         r#"<source media="(prefers-color-scheme: dark)" srcset="{}">"#,
@@ -86,17 +94,20 @@ pub(super) fn dark_variants(doc: &Document, cx: &mut Context<'_>) -> Option<Vec<
                     .unwrap_or_default();
                 let img = format!(
                     r#"<img src="{}" alt="{}"{title}>"#,
-                    escape(&image.src),
+                    href(&image.src),
                     escape(&image.alt)
                 );
                 let mut lines = vec![
                     "<picture>".to_owned(),
-                    format!("  {}", dark_source(&dark_for(&image.src, dark))),
+                    format!(
+                        r#"  <source media="(prefers-color-scheme: dark)" srcset="{}">"#,
+                        href(&dark_for(&image.src, dark))
+                    ),
                     format!("  {img}"),
                     "</picture>".to_owned(),
                 ];
-                if let Some(href) = &image.href {
-                    lines.insert(0, format!(r#"<a href="{}">"#, escape(href)));
+                if let Some(link) = &image.href {
+                    lines.insert(0, format!(r#"<a href="{}">"#, href(link)));
                     lines.push("</a>".into());
                 }
                 // Still a paragraph, so it stacks with its neighbours as before.

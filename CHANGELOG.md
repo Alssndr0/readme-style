@@ -10,7 +10,23 @@ All notable changes are listed here. The format follows
 
 - `readme-style suggest tagline` and `readme-style suggest diagram` ask a model (Anthropic, or any
   OpenAI-compatible server such as a local vLLM) for a tagline or a Mermaid architecture diagram and
-  print the suggestions. Configured with flags, an `[ai]` table, or the environment.
+  print the suggestions. Configured with flags, the environment, or an `[ai]` table (provider and
+  model only: a repository cannot choose where your key is sent).
+
+### Fixed
+
+- Line endings are kept line by line: a lone carriage return no longer crashes styling or slips past
+  the guard, and one CRLF line in an LF file stays as it was instead of converting the whole file.
+- YAML front matter (Hugging Face model cards, GitHub's metadata table) stays first and untouched.
+- Text after a callout lead-in keeps its meaning (`**Note:** # of retries` no longer becomes a
+  heading); callouts that cannot be converted safely are left as they are.
+- Table of contents and nav labels are built from the parsed heading, so code spans such as
+  `` `Vec<T>` `` survive.
+- `--write` follows a symlinked README instead of replacing the link, and keeps hard links;
+  `--stdout` writes the README byte for byte.
+- A dark logo variant works for file names with non-ASCII characters; custom theme names are
+  checked; an unrelated broken `package.json` or manifest no longer stops styling; license files
+  are found by any capitalization, with the same result on every operating system.
 
 ## [0.2.0] - 2026-10-29
 

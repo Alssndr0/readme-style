@@ -1,5 +1,8 @@
 //! Styling: run the pipeline, then prove the result is safe and stable before returning it.
 
+use std::sync::LazyLock;
+
+use regex::Regex;
 use serde::Serialize;
 
 use crate::Diagnostic;
@@ -85,21 +88,60 @@ fn run(source: &str, theme: &Theme, facts: &ProjectFacts) -> Run {
 /// says (see [`guard`](crate::guard)), and styling it again must change nothing.
 pub fn style(source: &str, theme: &Theme, facts: &ProjectFacts) -> Result<Outcome, StyleError> {
     let normalized = Normalized::new(source);
-    let first = run(&normalized.text, theme, facts);
-    guard::verify(&normalized.text, &first.text)?;
+    let (front, body) = split_front_matter(&normalized.text);
+    let offset = front.matches('\n').count();
+    let first = run(body, theme, facts);
+    guard::verify(body, &first.text).map_err(|mut violation| {
+        violation.line = violation.line.map(|l| l + offset);
+        violation
+    })?;
     let second = run(&first.text, theme, facts);
     if second.text != first.text {
         let step = second.changed_by.first().copied().unwrap_or(STRIP);
         return Err(StyleError::NotIdempotent(step));
     }
-    let output = normalized.restore(&first.text);
+    let output = normalized.restore(&format!("{front}{}", first.text));
+    let mut diagnostics = Document::parse(body).diagnostics;
+    for diagnostic in &mut diagnostics {
+        diagnostic.line += offset;
+    }
     Ok(Outcome {
         changed: output != source,
         output,
         badges: first.badges,
         changed_by: first.changed_by,
-        diagnostics: Document::parse(&normalized.text).diagnostics,
+        diagnostics,
     })
+}
+
+/// YAML front matter (a first line `---`, YAML, then `---` or `...`) and the rest. GitHub shows
+/// front matter as a table and Hugging Face reads model cards from it: styling starts after it.
+/// A README may also open with a horizontal rule, so the lines in between must read as YAML.
+fn split_front_matter(text: &str) -> (&str, &str) {
+    static KEY: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r#"^["']?[\w][\w .-]*["']?\s*:(\s|$)"#).expect("valid regex"));
+    let Some(rest) = text.strip_prefix("---\n") else {
+        return ("", text);
+    };
+    let mut end = 4;
+    let mut first = true;
+    for line in rest.split_inclusive('\n') {
+        end += line.len();
+        let content = line.trim_end();
+        if matches!(content, "---" | "...") {
+            return text.split_at(end);
+        }
+        if content.trim().is_empty() || content.trim_start().starts_with('#') {
+            continue;
+        }
+        let indented = content.starts_with([' ', '\t']);
+        let fits = KEY.is_match(content) || (!first && (indented || content.starts_with("- ")));
+        if !fits {
+            return ("", text);
+        }
+        first = false;
+    }
+    ("", text)
 }
 
 /// One pass of the pipeline without the guard or the stability check. For debugging tools
@@ -107,7 +149,8 @@ pub fn style(source: &str, theme: &Theme, facts: &ProjectFacts) -> Result<Outcom
 #[doc(hidden)]
 pub fn style_unchecked(source: &str, theme: &Theme, facts: &ProjectFacts) -> String {
     let normalized = Normalized::new(source);
-    normalized.restore(&run(&normalized.text, theme, facts).text)
+    let (front, body) = split_front_matter(&normalized.text);
+    normalized.restore(&format!("{front}{}", run(body, theme, facts).text))
 }
 
 /// The theme named in a README's own markers, left there by an earlier run.
@@ -116,4 +159,23 @@ pub fn recorded_theme(source: &str) -> Option<String> {
         .regions
         .into_iter()
         .find_map(|r| r.attrs.get("theme").cloned())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::split_front_matter;
+
+    #[test]
+    fn front_matter_is_split_off() {
+        assert_eq!(
+            split_front_matter("---\nlicense: mit\n---\n# T\n"),
+            ("---\nlicense: mit\n---\n", "# T\n")
+        );
+        assert_eq!(split_front_matter("---\n---\nbody"), ("---\n---\n", "body"));
+        assert_eq!(split_front_matter("# T\n---\n"), ("", "# T\n---\n"));
+        assert_eq!(
+            split_front_matter("---\nnever closed\n"),
+            ("", "---\nnever closed\n")
+        );
+    }
 }
