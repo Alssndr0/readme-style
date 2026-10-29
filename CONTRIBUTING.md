@@ -26,7 +26,7 @@ cargo run -- --help             # the CLI from source
 | `cargo xtask debug PATH THEME [THEME...]` | Styles without checks and shows what a second pass would change. |
 | `cargo xtask screenshot README.md out.png` | Renders through GitHub's API and screenshots it (needs `gh` and Chrome). |
 | `cargo xtask gallery owner__name:theme ...` | Before and after screenshots of corpus READMEs, side by side in `target/gallery/index.html`. |
-| `cargo xtask playground` | Builds the browser playground into `target/playground` (needs `rustup target add wasm32-unknown-unknown`); serve it with `python3 -m http.server --directory target/playground`. |
+| `cargo xtask playground` | Builds the browser playground into `target/playground` (needs `rustup target add wasm32-unknown-unknown`); serve it with `python3 -m http.server --directory target/playground`. Then `python3 -I playground/tests/smoke.py target/playground` checks it in headless Chrome. |
 
 The corpus run must report no refusals, no instability and no theme-switch drift. When a property
 test fails, proptest prints the smallest failing README; add it as a regression test once fixed.
