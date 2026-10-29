@@ -136,11 +136,27 @@ impl Outline {
             .copied()
             .filter(|(_, b)| b.start >= after_title && b.start < intro_end)
             .collect();
-        let tagline = find_tagline(&intro);
+        // A README without a title may open with a preamble (sponsors, a notice) before the image
+        // that starts its hero; the hero starts at that image when it comes early.
+        let preamble = if title.is_none() {
+            intro
+                .iter()
+                .take(3)
+                .position(|(_, b)| is_media(b) && !b.images.is_empty())
+                .unwrap_or(0)
+        } else {
+            0
+        };
+        let hero_blocks = &intro[preamble..];
+        let tagline = find_tagline(hero_blocks);
 
         let is_tagline = |index: usize| tagline == Some(index);
-        let mut hero_end = after_title;
-        for &(index, block) in &intro {
+        let mut hero_end = if preamble > 0 {
+            hero_blocks[0].1.start
+        } else {
+            after_title
+        };
+        for &(index, block) in hero_blocks {
             if is_comment(block) {
                 continue;
             }
@@ -155,8 +171,9 @@ impl Outline {
             hero_end = block.end;
         }
 
-        let mut lead_end = 0;
-        for (_, block) in &user {
+        let lead_start = if preamble > 0 { hero_blocks[0].1.start } else { 0 };
+        let mut lead_end = lead_start;
+        for (_, block) in user.iter().filter(|(_, b)| b.start >= lead_start) {
             if is_comment(block) {
                 continue;
             }
@@ -180,7 +197,7 @@ impl Outline {
                 }
                 start
             }
-            None if hero_end > 0 => user.first().map_or(0, |(_, b)| b.start),
+            None if hero_end > 0 => hero_blocks.first().or(user.first()).map_or(0, |(_, b)| b.start),
             None => 0,
         };
 
@@ -384,6 +401,19 @@ mod tests {
         assert!(outline.has_user_badges);
         assert!(outline.has_user_toc);
         assert_eq!(outline.hero_end, 3, "the badge row belongs to the hero");
+    }
+
+    #[test]
+    fn a_preamble_before_the_hero_image_is_left_alone() {
+        let doc = Document::parse(
+            "<div align=\"center\">Special thanks to our sponsors, who keep this going; visit them all.</div>\n\n\
+             <p align=\"center\"><img src=\"logo.png\"></p>\n\nA terminal UI for things.\n\nLong intro text here.\n\n## A\n",
+        );
+        let outline = doc.outline();
+        assert_eq!(
+            (outline.hero_start, outline.hero_end, outline.lead_end),
+            (2, 5, 3)
+        );
     }
 
     #[test]

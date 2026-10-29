@@ -18,8 +18,8 @@ static ENTRY_LISTS: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?i)^\W*(change ?log|changes|release notes|release history|history|news|updates|what'?s new|faq|frequently asked questions)\W*$")
         .expect("valid regex")
 });
-/// Past this many entries only top-level sections are listed.
-const MAX_ENTRIES: usize = 40;
+/// Past this many entries a list stops helping; only top-level sections are listed then.
+const MAX_ENTRIES: usize = 24;
 
 /// The heading's own Markdown, minus links and images, which cannot nest inside a link.
 fn entry_text(heading: &Heading) -> String {

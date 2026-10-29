@@ -137,7 +137,6 @@ minio/minio
 # Everything else
 ohmyzsh/ohmyzsh
 neovim/neovim
-kamranahmed/developer-roadmap
 EbookFoundation/free-programming-books
 sindresorhus/awesome
 public-apis/public-apis
@@ -149,3 +148,74 @@ jellyfin/jellyfin
 louislam/uptime-kuma
 n8n-io/n8n
 appwrite/appwrite
+# README showcases and HTML-heavy layouts
+matiassingers/awesome-readme
+abhisheknaiidu/awesome-github-profile-readme
+anuraghazra/github-readme-stats
+DenverCoder1/readme-typing-svg
+Ileriayo/markdown-badges
+tldr-pages/tldr
+nvm-sh/nvm
+Homebrew/brew
+jqlang/jq
+tj/commander.js
+yargs/yargs
+pallets/click
+mitmproxy/mitmproxy
+localstack/localstack
+Significant-Gravitas/AutoGPT
+# More research code
+openai/gpt-2
+facebookresearch/detectron2
+pytorch/vision
+jax-ml/jax
+lucidrains/vit-pytorch
+lucidrains/denoising-diffusion-pytorch
+huggingface/peft
+microsoft/DeepSpeed
+NVIDIA/Megatron-LM
+EleutherAI/lm-evaluation-harness
+openai/evals
+rasbt/LLMs-from-scratch
+karpathy/minGPT
+karpathy/micrograd
+# Infrastructure and databases
+chroma-core/chroma
+qdrant/qdrant
+meilisearch/meilisearch
+surrealdb/surrealdb
+PyO3/pyo3
+rust-lang/rustlings
+rust-unofficial/awesome-rust
+# More JavaScript
+denoland/fresh
+honojs/hono
+withastro/astro
+remix-run/remix
+shadcn-ui/ui
+TanStack/query
+pmndrs/zustand
+date-fns/date-fns
+vitest-dev/vitest
+microsoft/playwright
+puppeteer/puppeteer
+# More Go and terminal tools
+go-gitea/gitea
+syncthing/syncthing
+rclone/rclone
+restic/restic
+wagoodman/dive
+jesseduffield/lazydocker
+derailed/k9s
+zellij-org/zellij
+wez/wezterm
+# Languages and big frameworks
+ziglang/zig
+crystal-lang/crystal
+elixir-lang/elixir
+nodejs/node
+laravel/laravel
+spring-projects/spring-boot
+square/okhttp
+flutter/flutter
+facebook/react-native

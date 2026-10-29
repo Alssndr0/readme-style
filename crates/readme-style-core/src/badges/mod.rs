@@ -43,11 +43,7 @@ fn escape_alt(text: &str) -> String {
 }
 
 fn destination(url: &str) -> String {
-    if url.contains([' ', '(', ')', '<', '>']) {
-        format!("<{url}>")
-    } else {
-        url.to_owned()
-    }
+    crate::markdown::link_destination(url)
 }
 
 /// The badges a theme asks for, in its order, without excluded ones, at most `max`.

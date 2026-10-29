@@ -22,6 +22,8 @@ static DOCS_SECTION: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?i)^\W*(documentation|docs)\W*$").expect("valid regex"));
 static WORD: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\w+").expect("valid regex"));
 
+/// A nav bar is read at a glance: sections with longer titles are left out of it.
+const NAV_LABEL_MAX_CHARS: usize = 30;
 /// A tagline should read in one glance.
 const TAGLINE_MAX_CHARS: usize = 160;
 /// How many opening words of a description count as "the README already says this".
@@ -48,7 +50,7 @@ fn metadata_tagline(doc: &Document, description: Option<&str>) -> Option<String>
     if words(&doc.outline().user_text).contains(&opening.join(" ")) {
         return None;
     }
-    Some(description.to_owned())
+    Some(crate::markdown::escape_text(description))
 }
 
 fn label(heading: &Heading) -> String {
@@ -78,7 +80,7 @@ fn nav_bar(doc: &Document, cx: &Context<'_>) -> Option<String> {
         .sections
         .iter()
         .map(|&i| &doc.headings[i])
-        .filter(|h| !is_toc_title(&h.text))
+        .filter(|h| !is_toc_title(&h.text) && h.text.chars().count() <= NAV_LABEL_MAX_CHARS)
         .collect();
     let docs = cx
         .facts
@@ -106,7 +108,11 @@ fn nav_bar(doc: &Document, cx: &Context<'_>) -> Option<String> {
         .map(|h| nav_item(settings.style, &label(h), &format!("#{}", h.slug)))
         .collect();
     if let Some(docs) = docs {
-        items.push(nav_item(settings.style, "Docs", docs));
+        items.push(nav_item(
+            settings.style,
+            "Docs",
+            &crate::markdown::link_destination(docs),
+        ));
     }
     (items.len() >= 2).then(|| items.join(&settings.separator))
 }
@@ -169,6 +175,7 @@ pub(super) fn apply(doc: &Document, cx: &mut Context<'_>) -> Option<Vec<String>>
     }
     if theme.nav.show
         && !outline.has_user_nav
+        && !outline.has_user_toc
         && let Some(nav) = nav_bar(doc, cx)
     {
         content.extend([nav, String::new()]);
