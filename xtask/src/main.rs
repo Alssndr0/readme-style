@@ -239,8 +239,8 @@ fn corpus_run(args: &[&str]) -> Result<bool> {
                     outputs.push(None);
                     continue;
                 }
-                Ok(Err(StyleError::NotIdempotent(step))) => {
-                    tally.unstable.push(format!("{name}: {step}"));
+                Ok(Err(error)) => {
+                    tally.unstable.push(format!("{name}: {error}"));
                     outputs.push(None);
                     continue;
                 }

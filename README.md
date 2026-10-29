@@ -14,7 +14,7 @@ Keep your README's words, upgrade its presentation.
 <!-- readme-style:header theme=startup -->
 [![CI](https://img.shields.io/github/actions/workflow/status/Alssndr0/readme-style/ci.yml?label=CI&logo=github&style=for-the-badge)](https://github.com/Alssndr0/readme-style/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
 
-**[Why](#why)** · **[Install](#install)** · **[Quick start](#quick-start)** · **[Themes](#themes)** · **[Contributing](#contributing)** · **[License](#license)**
+**[Why](#why)** · **[Install](#install)** · **[Quick start](#quick-start)** · **[Themes](#themes)** · **[Before and after](#before-and-after)** · **[Configuration](#configuration)**
 
 ---
 <!-- /readme-style:header -->
@@ -109,11 +109,11 @@ gets no second nav bar.
 
 ## The content guarantee
 
-After styling, readme-style removes everything it generated from both versions, renders them the
-way GitHub does, and compares them as a sequence of words, code (exact), link targets, images,
-heading levels and block boundaries. They must be identical. A GitHub alert's title counts as the
-"Note:" it replaced; nothing else is normalized. If anything differs, the file is left untouched,
-the command exits with code 3, and the message names the line and the difference.
+After styling, readme-style removes everything it generated from both versions, renders them the way
+GitHub does, and compares them as a sequence of words, code (exact), link targets, images, heading
+levels, line breaks and block boundaries. They must be identical. A GitHub alert's title counts as
+the "Note:" it replaced; nothing else is normalized. If anything differs, the file is left
+untouched, the command exits with code 3, and the message names the line and the difference.
 
 It then runs the whole pipeline again on its own output, and refuses to write if that would change
 anything, so `--check` never flaps. Both checks run on every invocation, not only in tests.

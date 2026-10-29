@@ -271,6 +271,33 @@ fn the_ai_table_chooses_provider_and_model_only() {
 }
 
 #[test]
+fn a_repository_cannot_pick_the_key_sent_to_a_base_url() {
+    let dir = project();
+    fs::write(
+        dir.path().join(".readme-style.toml"),
+        "[ai]\nprovider = \"anthropic\"\nmodel = \"claude-x\"\n",
+    )
+    .expect("config");
+    let models = json!({"object": "list", "data": [{"id": "local/qwen"}]});
+    let answer = json!({"choices": [{"finish_reason": "stop", "message": {"content": "Configs, parsed"}}]});
+    let server = mock(vec![(200, models), (200, answer)]);
+    cli(&dir)
+        .args(["suggest", "tagline", "--base-url", &format!("{}/v1", server.url)])
+        .env("ANTHROPIC_API_KEY", "do-not-send")
+        .env("ANTHROPIC_AUTH_TOKEN", "do-not-send-either")
+        .assert()
+        .success();
+    let requests = server.requests.lock().expect("lock");
+    assert_eq!(requests[1].path, "/v1/chat/completions");
+    assert_eq!(requests[1].body["model"], "local/qwen");
+    for request in requests.iter() {
+        for (name, value) in &request.headers {
+            assert!(!value.contains("do-not-send"), "{name} carries a key");
+        }
+    }
+}
+
+#[test]
 fn a_repository_cannot_redirect_requests_or_pick_the_key() {
     let dir = project();
     for key in [

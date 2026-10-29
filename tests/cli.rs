@@ -212,6 +212,59 @@ fn a_symlinked_readme_stays_a_symlink() {
     assert!(read(&dir.path().join("docs/README.md")).contains("> [!NOTE]"));
 }
 
+#[cfg(unix)]
+#[test]
+fn a_symlink_out_of_the_repository_is_not_written_through() {
+    let outside = TempDir::new().expect("temp dir");
+    let victim = outside.path().join("bashrc");
+    fs::write(&victim, README).expect("victim");
+    let dir = project(&[]);
+    std::os::unix::fs::symlink(&victim, dir.path().join("README.md")).expect("symlink");
+    cli()
+        .arg("--write")
+        .arg(dir.path())
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains("outside"));
+    assert_eq!(read(&victim), README);
+}
+
+#[cfg(unix)]
+#[test]
+fn a_planted_temporary_file_is_never_followed() {
+    let outside = TempDir::new().expect("temp dir");
+    let victim = outside.path().join("precious.txt");
+    fs::write(&victim, "precious\n").expect("victim");
+    let dir = project(&[("README.md", README)]);
+    std::os::unix::fs::symlink(&victim, dir.path().join(".README.md.readme-style.tmp")).expect("symlink");
+    cli().arg("--write").arg(dir.path()).assert().success();
+    assert_eq!(read(&victim), "precious\n");
+    assert!(read(&dir.path().join("README.md")).contains("> [!NOTE]"));
+    assert!(
+        !fs::symlink_metadata(dir.path().join("README.md"))
+            .expect("meta")
+            .file_type()
+            .is_symlink()
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn hard_links_stay_linked() {
+    let dir = project(&[("README.md", README)]);
+    fs::hard_link(dir.path().join("README.md"), dir.path().join("index.md")).expect("hard link");
+    cli().arg("--write").arg(dir.path()).assert().success();
+    let styled = read(&dir.path().join("README.md"));
+    assert!(styled.contains("> [!NOTE]"));
+    assert_eq!(read(&dir.path().join("index.md")), styled);
+    let leftovers: Vec<_> = fs::read_dir(dir.path())
+        .expect("list")
+        .filter_map(Result::ok)
+        .filter(|e| e.file_name().to_string_lossy().ends_with(".tmp"))
+        .collect();
+    assert!(leftovers.is_empty(), "{leftovers:?}");
+}
+
 #[test]
 fn stdout_keeps_escape_bytes() {
     let source = "# demo\n\n```\n\u{1b}[32mgreen\u{1b}[0m\n```\n";

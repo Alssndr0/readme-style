@@ -99,9 +99,9 @@ code) an empty comment is left instead.
 `guard.rs` is deliberately independent of the transforms. It strips managed lines from both
 versions (each run of them becomes an empty comment, which separates blocks exactly as the markers
 did), renders both with GitHub's options, tokenizes the HTML and compares atoms: words, exact code,
-link targets, image sources with alt text, heading levels and block boundaries. A GitHub alert's
-title stands in for the lead-in it replaced; emoji are not words. On a mismatch it reports the first
-difference with its line in the original.
+link targets, image sources with alt text, heading levels, line breaks and block boundaries. A
+GitHub alert's title stands in for the lead-in it replaced; emoji are not words. On a mismatch it
+reports the first difference with its line in the original.
 
 ## Testing
 

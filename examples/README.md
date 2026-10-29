@@ -94,7 +94,7 @@ A Python library with a changelog, a logo pair, a CI workflow and a release work
 +<!-- readme-style:header theme=startup -->
 +[![PyPI version](https://img.shields.io/pypi/v/quickparse?logo=pypi&logoColor=white&style=for-the-badge)](https://pypi.org/project/quickparse/) [![PyPI downloads](https://img.shields.io/pypi/dm/quickparse?style=for-the-badge)](https://pypistats.org/packages/quickparse) [![CI](https://img.shields.io/github/actions/workflow/status/acme/quickparse/ci.yml?label=CI&logo=github&style=for-the-badge)](https://github.com/acme/quickparse/actions/workflows/ci.yml) [![Coverage](https://img.shields.io/codecov/c/github/acme/quickparse?logo=codecov&style=for-the-badge)](https://codecov.io/gh/acme/quickparse) [![Documentation](https://img.shields.io/badge/docs-online-0A7BBB?style=for-the-badge)](https://quickparse.readthedocs.io) [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
 +
-+**[Features](#features)** · **[Installation](#installation)** · **[Usage](#usage)** · **[Configuration](#configuration)** · **[Contributing](#contributing)** · **[Docs](https://quickparse.readthedocs.io)**
++**[Features](#features)** · **[Installation](#installation)** · **[Usage](#usage)** · **[Configuration](#configuration)** · **[Changelog](#changelog)** · **[Docs](https://quickparse.readthedocs.io)**
 +
 +---
 +<!-- /readme-style:header -->
@@ -160,7 +160,7 @@ A Python library with a changelog, a logo pair, a CI workflow and a release work
 +<!-- readme-style:header theme=ml-research -->
 +![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white&style=flat) [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat)](LICENSE)
 +
-+**[Features](#features)** · **[Installation](#installation)** · **[Usage](#usage)** · **[Configuration](#configuration)** · **[Contributing](#contributing)** · **[Docs](https://quickparse.readthedocs.io)**
++**[Features](#features)** · **[Installation](#installation)** · **[Usage](#usage)** · **[Configuration](#configuration)** · **[Changelog](#changelog)** · **[Docs](https://quickparse.readthedocs.io)**
 +<!-- /readme-style:header -->
 +
 +</div><!-- /readme-style:center -->
@@ -243,7 +243,7 @@ A Python library with a changelog, a logo pair, a CI workflow and a release work
 +<!-- readme-style:header theme=cli -->
 +[![PyPI version](https://img.shields.io/pypi/v/quickparse?logo=pypi&logoColor=white&labelColor=1f2328&color=3d444d&style=flat-square)](https://pypi.org/project/quickparse/) [![CI](https://img.shields.io/github/actions/workflow/status/acme/quickparse/ci.yml?label=CI&logo=github&labelColor=1f2328&color=3d444d&style=flat-square)](https://github.com/acme/quickparse/actions/workflows/ci.yml) ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3d444d?logo=python&logoColor=white&labelColor=1f2328&style=flat-square) [![License: MIT](https://img.shields.io/badge/license-MIT-3d444d?labelColor=1f2328&style=flat-square)](LICENSE)
 +
-+<kbd>[Features](#features)</kbd> <kbd>[Installation](#installation)</kbd> <kbd>[Usage](#usage)</kbd> <kbd>[Configuration](#configuration)</kbd> <kbd>[Contributing](#contributing)</kbd> <kbd>[Docs](https://quickparse.readthedocs.io)</kbd>
++<kbd>[Features](#features)</kbd> <kbd>[Installation](#installation)</kbd> <kbd>[Usage](#usage)</kbd> <kbd>[Configuration](#configuration)</kbd> <kbd>[Changelog](#changelog)</kbd> <kbd>[Docs](https://quickparse.readthedocs.io)</kbd>
 +<!-- /readme-style:header -->
 +
 +</div><!-- /readme-style:center -->
@@ -412,7 +412,7 @@ Research code with arXiv, Hugging Face and Colab links, a results table and a ne
 +<!-- readme-style:header theme=startup -->
 +[![Tests](https://img.shields.io/github/actions/workflow/status/acme-lab/sparseflow/tests.yml?label=Tests&logo=github&style=for-the-badge)](https://github.com/acme-lab/sparseflow/actions/workflows/tests.yml) [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue?style=for-the-badge)](LICENSE)
 +
-+**[News](#news)** · **[Installation](#installation)** · **[Quick Start](#quick-start)** · **[Results](#results)** · **[Citation](#citation)** · **[License](#license)**
++**[News](#news)** · **[Installation](#installation)** · **[Quick Start](#quick-start)** · **[Results](#results)** · **[Training](#training)** · **[Citation](#citation)**
 +
 +---
 +<!-- /readme-style:header -->
@@ -458,7 +458,7 @@ Research code with arXiv, Hugging Face and Colab links, a results table and a ne
 +<!-- readme-style:header theme=ml-research -->
 +[![arXiv 2605.01234](https://img.shields.io/badge/arXiv-2605.01234-B31B1B?logo=arxiv&logoColor=white&style=flat)](https://arxiv.org/abs/2605.01234) [![Project page](https://img.shields.io/badge/Project_Page-2F80ED?style=flat)](https://acme-lab.github.io/sparseflow) [![Hugging Face models](https://img.shields.io/badge/Hugging_Face-Models-FFD21E?logo=huggingface&logoColor=000&style=flat)](https://huggingface.co/acme-lab/sparseflow-xl) [![Hugging Face demo](https://img.shields.io/badge/Hugging_Face-Demo-FFD21E?logo=huggingface&logoColor=000&style=flat)](https://huggingface.co/spaces/acme-lab/sparseflow) [![Open in Colab](https://img.shields.io/badge/Open_in-Colab-F9AB00?logo=googlecolab&logoColor=white&style=flat)](https://colab.research.google.com/github/acme-lab/sparseflow/blob/main/demo.ipynb) ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white&style=flat) [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat)](LICENSE)
 +
-+**[News](#news)** · **[Installation](#installation)** · **[Quick Start](#quick-start)** · **[Results](#results)** · **[Citation](#citation)** · **[License](#license)**
++**[News](#news)** · **[Installation](#installation)** · **[Quick Start](#quick-start)** · **[Results](#results)** · **[Training](#training)** · **[Citation](#citation)**
 +<!-- /readme-style:header -->
 +
 +</div><!-- /readme-style:center -->
@@ -532,7 +532,7 @@ Research code with arXiv, Hugging Face and Colab links, a results table and a ne
 +<!-- readme-style:header theme=cli -->
 +[![Tests](https://img.shields.io/github/actions/workflow/status/acme-lab/sparseflow/tests.yml?label=Tests&logo=github&labelColor=1f2328&color=3d444d&style=flat-square)](https://github.com/acme-lab/sparseflow/actions/workflows/tests.yml) ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3d444d?logo=python&logoColor=white&labelColor=1f2328&style=flat-square) [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-3d444d?labelColor=1f2328&style=flat-square)](LICENSE)
 +
-+<kbd>[News](#news)</kbd> <kbd>[Installation](#installation)</kbd> <kbd>[Quick Start](#quick-start)</kbd> <kbd>[Results](#results)</kbd> <kbd>[Citation](#citation)</kbd> <kbd>[License](#license)</kbd>
++<kbd>[News](#news)</kbd> <kbd>[Installation](#installation)</kbd> <kbd>[Quick Start](#quick-start)</kbd> <kbd>[Results](#results)</kbd> <kbd>[Training](#training)</kbd> <kbd>[Citation](#citation)</kbd>
 +<!-- /readme-style:header -->
 +
 +</div><!-- /readme-style:center -->

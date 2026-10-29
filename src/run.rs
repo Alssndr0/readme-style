@@ -145,7 +145,7 @@ fn process(path: &Path, args: &Args) -> FileReport {
         false
     };
     if apply {
-        if let Err(e) = write_readme(&job.path, &outcome.output) {
+        if let Err(e) = write_readme(&job.path, &outcome.output, &job.text) {
             return report.failed(Status::Error, format!("cannot write {}: {e}", job.path.display()));
         }
         report.status = Status::Written;

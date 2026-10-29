@@ -79,6 +79,14 @@ pub(crate) struct Heading {
     pub(crate) managed: bool,
 }
 
+impl Heading {
+    /// Whether a link can name and reach it: a heading made only of an image or HTML has no
+    /// label, and no anchor of its own.
+    pub(crate) fn has_anchor_text(&self) -> bool {
+        !self.label.is_empty() && !self.slug.is_empty()
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct Document {
     pub(crate) lines: Vec<String>,
@@ -212,6 +220,30 @@ impl Collector {
             }
         }
     }
+}
+
+/// A table directly under a paragraph (no blank line between) is parsed together with it, and
+/// the paragraph's lines can read differently on their own: before a table, `[x]: url` is text,
+/// alone it is a link definition. The two are one block, so nothing is placed between them.
+fn join_tables(blocks: Vec<Block>) -> Vec<Block> {
+    let mut out: Vec<Block> = Vec::with_capacity(blocks.len());
+    for block in blocks {
+        if let Some(previous) = out.last_mut()
+            && previous.kind == BlockKind::Paragraph
+            && block.kind == BlockKind::Table
+            && previous.end == block.start
+        {
+            previous.kind = BlockKind::Table;
+            previous.end = block.end;
+            previous.text = format!("{} {}", previous.text, block.text);
+            previous.images.extend(block.images);
+            previous.links.extend(block.links);
+            previous.sole_image = None;
+            continue;
+        }
+        out.push(block);
+    }
+    out
 }
 
 /// Inline content as Markdown that can sit inside `[...]`: text is escaped where it could
@@ -429,6 +461,7 @@ impl Document {
         // comrak moves footnote definitions to the end of the tree; keep source order.
         let mut blocks = blocks;
         blocks.sort_by_key(|b| b.start);
+        let blocks = join_tables(blocks);
 
         Self {
             lines,

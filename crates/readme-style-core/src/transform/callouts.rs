@@ -39,9 +39,10 @@ pub(super) fn apply(doc: &Document, cx: &mut Context<'_>) -> Option<Vec<String>>
     ed.apply()
 }
 
-/// The alert kind and the text after the lead-in, when `text` opens with one.
+/// The alert kind and the text after the lead-in, when `text` opens with one. Trailing spaces
+/// stay: two of them are a line break.
 fn lead(text: &str) -> Option<(String, String)> {
-    let text = text.trim();
+    let text = text.trim_start();
     let (kind, rest) = if let Some(c) = EMPHASIZED.captures(text) {
         let kind = (1..=4).find_map(|i| c.get(i))?;
         (kind.as_str(), c.get(5))
@@ -51,17 +52,27 @@ fn lead(text: &str) -> Option<(String, String)> {
     };
     Some((
         kind.to_ascii_uppercase(),
-        rest.map_or("", |m| m.as_str()).trim().to_owned(),
+        rest.map_or("", |m| m.as_str()).trim_start().to_owned(),
     ))
 }
 
 static ORDERED: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^(\d{1,9})([.)])(\s.*)?$").expect("valid regex"));
 static RULE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^(?:[-*_][ \t]*){3,}$").expect("valid regex"));
+/// A setext underline, or a one-column table delimiter row.
+static UNDERLINE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(?:=+|:?-+:?)[ \t]*$").expect("valid regex"));
+/// A link reference or footnote definition.
+static DEFINITION: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^\[(?:[^\]\\]|\\.)*\]:").expect("valid regex"));
 
 /// `text` made safe as the first line of the alert's paragraph. Moving text to the start of a
 /// line can open another kind of block (`# of retries` would become a heading); a backslash
 /// escape keeps the same characters on screen. `None` when no escape keeps the meaning.
+///
+/// The line must be safe twice: the guard's parser reads it as the start of the alert's
+/// paragraph, while GitHub reads `[!NOTE]` as text and this line as its continuation, where
+/// `--` would underline a heading and `:--` would start a table.
 fn as_paragraph_start(text: &str) -> Option<String> {
     let text = text.trim_start();
     if text.starts_with(['<', '|'])
@@ -81,10 +92,21 @@ fn as_paragraph_start(text: &str) -> Option<String> {
     }
     let list_marker = text.starts_with(['-', '+', '*']) && text[1..].starts_with([' ', '\t'])
         || matches!(text, "-" | "+" | "*");
-    if text.starts_with(['#', '>', '=']) || list_marker || RULE.is_match(text) {
+    if text.starts_with(['#', '>', '='])
+        || list_marker
+        || RULE.is_match(text)
+        || UNDERLINE.is_match(text)
+        || DEFINITION.is_match(text)
+    {
         return Some(format!("\\{text}"));
     }
     Some(text.to_owned())
+}
+
+/// A lead-in alone on its line, then a line break: the alert title would replace the break, so
+/// the paragraph stays as it is.
+fn ends_with_line_break(line: &str) -> bool {
+    line.ends_with("  ")
 }
 
 fn quote(doc: &Document, block: &Block, ed: &mut Editor<'_>) {
@@ -96,6 +118,9 @@ fn quote(doc: &Document, block: &Block, ed: &mut Editor<'_>) {
         return;
     }
     let Some((kind, rest)) = lead(content) else { return };
+    if rest.is_empty() && ends_with_line_break(content) {
+        return;
+    }
     let prefix = format!("{} ", first[1].trim_end());
     let mut lines = vec![format!("{prefix}[!{kind}]")];
     let mut end = block.start + 1;
@@ -128,6 +153,9 @@ fn paragraph(doc: &Document, block: &Block, ed: &mut Editor<'_>) {
     let Some((kind, rest)) = lead(&lines[0]) else {
         return;
     };
+    if rest.is_empty() && ends_with_line_break(&lines[0]) {
+        return;
+    }
     let (opening, continuation) = if rest.is_empty() {
         match lines.get(1) {
             Some(next) => (next.as_str(), &lines[2..]),
@@ -159,6 +187,11 @@ mod tests {
             ("***", Some("\\***")),
             ("*emphasis* stays", Some("*emphasis* stays")),
             ("2024 was good", Some("2024 was good")),
+            ("--", Some("\\--")),
+            (":--- ", Some("\\:--- ")),
+            ("[foo]: https://example.com", Some("\\[foo]: https://example.com")),
+            ("[^1]: see below", Some("\\[^1]: see below")),
+            ("[a link](x) here", Some("[a link](x) here")),
             ("<div>x</div> hello", None),
             ("```rust", None),
         ];
@@ -177,6 +210,8 @@ mod tests {
             (":warning: **Important:** read", Some(("IMPORTANT", "read"))),
             ("Note: plain", Some(("NOTE", "plain"))),
             ("**Note**", Some(("NOTE", ""))),
+            ("**Note:** a break  ", Some(("NOTE", "a break  "))),
+            ("**Note:**   ", Some(("NOTE", ""))),
             ("**Note that** this is prose", None),
             ("Note that this is prose.", None),
             ("Notes: not a kind", None),

@@ -129,7 +129,9 @@ its sections) gets none added. Subsections of changelog, news and FAQ sections a
 ## `[ai]`: the model for `readme-style suggest`
 
 Only `readme-style suggest` reads this table; styling never uses a model. Flags (`--provider`,
-`--model`, `--base-url`) win over it, and it wins over the environment.
+`--model`) win over it, and it wins over the environment. With `--base-url` the table is ignored:
+the provider is then OpenAI-compatible unless `--provider` says otherwise, so the key sent to the
+server you named is chosen on the command line too.
 
 | Key | Default | Meaning |
 |-----|---------|---------|

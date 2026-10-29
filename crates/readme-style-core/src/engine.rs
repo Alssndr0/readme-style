@@ -30,6 +30,7 @@ pub struct Outcome {
 
 /// Why a README was left untouched.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[non_exhaustive]
 pub enum StyleError {
     /// Styling would have changed what the README says.
     #[error("refusing to change the README: {0}")]
@@ -39,6 +40,12 @@ pub enum StyleError {
         "a second run would change the README again (in step '{0}'); this is a bug in readme-style, please report it"
     )]
     NotIdempotent(&'static str),
+    /// The original line endings could not be put back without changing the text. This is a
+    /// bug in readme-style.
+    #[error(
+        "the README's line endings could not be kept without changing it; this is a bug in readme-style, please report it"
+    )]
+    LineEndings,
 }
 
 struct Run {
@@ -95,12 +102,22 @@ pub fn style(source: &str, theme: &Theme, facts: &ProjectFacts) -> Result<Outcom
         violation.line = violation.line.map(|l| l + offset);
         violation
     })?;
-    let second = run(&first.text, theme, facts);
-    if second.text != first.text {
+    let styled = format!("{front}{}", first.text);
+    // The second run sees the result as a new invocation would: removing a stale region at the
+    // top can leave lines that now read as front matter.
+    let (second_front, second_body) = split_front_matter(&styled);
+    let second = run(second_body, theme, facts);
+    if second_front != front {
+        return Err(StyleError::NotIdempotent("front matter"));
+    }
+    if second.text != second_body {
         let step = second.changed_by.first().copied().unwrap_or(STRIP);
         return Err(StyleError::NotIdempotent(step));
     }
-    let output = normalized.restore(&format!("{front}{}", first.text));
+    let output = normalized.restore(&styled);
+    if Normalized::new(&output).text != styled {
+        return Err(StyleError::LineEndings);
+    }
     let mut diagnostics = Document::parse(body).diagnostics;
     for diagnostic in &mut diagnostics {
         diagnostic.line += offset;
@@ -114,32 +131,36 @@ pub fn style(source: &str, theme: &Theme, facts: &ProjectFacts) -> Result<Outcom
     })
 }
 
-/// YAML front matter (a first line `---`, YAML, then `---` or `...`) and the rest. GitHub shows
-/// front matter as a table and Hugging Face reads model cards from it: styling starts after it.
-/// A README may also open with a horizontal rule, so the lines in between must read as YAML.
+/// YAML front matter (a first line `---`, YAML with at least one key, then `---` or `...`) and
+/// the rest. GitHub shows front matter as a table and Hugging Face reads model cards from it:
+/// styling starts after it. A README may also open with a horizontal rule, so the lines in
+/// between must read as YAML; two rules with nothing, or only `# Project`, between them are just
+/// rules.
 fn split_front_matter(text: &str) -> (&str, &str) {
-    static KEY: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r#"^["']?[\w][\w .-]*["']?\s*:(\s|$)"#).expect("valid regex"));
+    /// A mapping key: quoted, or plain (not starting with a YAML indicator), then a colon.
+    static KEY: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r#"^(?:"[^"]*"|'[^']*'|[^\s#\-\[\]{},&*!|>'"%@`][^:]*?)\s*:(\s|$)"#).expect("valid regex")
+    });
     let Some(rest) = text.strip_prefix("---\n") else {
         return ("", text);
     };
     let mut end = 4;
-    let mut first = true;
+    let mut keys = 0;
     for line in rest.split_inclusive('\n') {
         end += line.len();
         let content = line.trim_end();
         if matches!(content, "---" | "...") {
-            return text.split_at(end);
+            return if keys > 0 { text.split_at(end) } else { ("", text) };
         }
         if content.trim().is_empty() || content.trim_start().starts_with('#') {
             continue;
         }
         let indented = content.starts_with([' ', '\t']);
-        let fits = KEY.is_match(content) || (!first && (indented || content.starts_with("- ")));
-        if !fits {
+        if KEY.is_match(content) {
+            keys += 1;
+        } else if keys == 0 || !(indented || content.starts_with("- ")) {
             return ("", text);
         }
-        first = false;
     }
     ("", text)
 }
@@ -171,11 +192,26 @@ mod tests {
             split_front_matter("---\nlicense: mit\n---\n# T\n"),
             ("---\nlicense: mit\n---\n", "# T\n")
         );
-        assert_eq!(split_front_matter("---\n---\nbody"), ("---\n---\n", "body"));
+        assert_eq!(split_front_matter("---\n---\nbody"), ("", "---\n---\nbody"));
         assert_eq!(split_front_matter("# T\n---\n"), ("", "# T\n---\n"));
         assert_eq!(
             split_front_matter("---\nnever closed\n"),
             ("", "---\nnever closed\n")
+        );
+        assert_eq!(
+            split_front_matter("---\ntitle: x\nC++: yes\n# comment\ntags:\n  - a\n---\nText.\n"),
+            (
+                "---\ntitle: x\nC++: yes\n# comment\ntags:\n  - a\n---\n",
+                "Text.\n"
+            )
+        );
+        assert_eq!(
+            split_front_matter("---\n# Project Name\n---\nText.\n"),
+            ("", "---\n# Project Name\n---\nText.\n")
+        );
+        assert_eq!(
+            split_front_matter("---\nA sentence, no key.\n---\n"),
+            ("", "---\nA sentence, no key.\n---\n")
         );
     }
 }

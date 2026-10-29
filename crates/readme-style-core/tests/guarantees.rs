@@ -257,7 +257,43 @@ proptest! {
             }
             Err(StyleError::Guard(violation)) => prop_assert!(false, "{name}: {violation}\n{source}"),
             Err(StyleError::NotIdempotent(step)) => prop_assert!(false, "{name}: unstable in {step}\n{source}"),
+            Err(error) => prop_assert!(false, "{name}: {error}\n{source}"),
         }
+    }
+
+    /// Line endings never change what is styled: any mix of LF, CRLF and lone CR gives the
+    /// result of the LF file, with the endings put back.
+    #[test]
+    fn line_endings_do_not_change_the_result(
+        source in well_formed(),
+        endings in proptest::collection::vec(0..3usize, 64),
+        index in 0usize..5,
+    ) {
+        let names = names();
+        let name = &names[index % names.len()];
+        let theme = theme(name);
+        let mut mixed = String::new();
+        for (i, line) in source.split_inclusive('\n').enumerate() {
+            match line.strip_suffix('\n') {
+                Some(body) => {
+                    mixed.push_str(body);
+                    let mut ending = ["\n", "\r\n", "\r"][endings[i % endings.len()]];
+                    // CR, then an empty line ending in LF, would be one CRLF.
+                    if body.is_empty() && ending == "\n" && mixed.ends_with('\r') {
+                        ending = "\r";
+                    }
+                    mixed.push_str(ending);
+                }
+                None => mixed.push_str(line),
+            }
+        }
+        let expected = style(&source, &theme, &facts()).expect("the LF file styles").output;
+        let outcome = style(&mixed, &theme, &facts());
+        prop_assert!(outcome.is_ok(), "{name}: {:?}\n{mixed:?}", outcome.err());
+        let output = outcome.map(|o| o.output).unwrap_or_default();
+        prop_assert_eq!(output.replace("\r\n", "\n").replace('\r', "\n"), expected);
+        let again = style(&output, &theme, &facts()).expect("styles again");
+        prop_assert!(!again.changed, "{name}: unstable\n{mixed:?}");
     }
 
     /// Mangled markers may be refused, but never crash, and what is written is stable.

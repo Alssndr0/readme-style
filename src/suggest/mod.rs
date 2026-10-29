@@ -50,8 +50,14 @@ fn env(name: &str) -> Option<String> {
 }
 
 /// Which model to ask: flags first, then the `[ai]` configuration, then the environment.
+///
+/// `--base-url` sets aside the `[ai]` table: the host comes from the command line, so the
+/// credential sent to it must too. Otherwise a repository saying `provider = "anthropic"` would
+/// send your Anthropic key to whatever server you meant for a local model.
 fn resolve(args: &SuggestArgs, settings: &AiSettings) -> Result<Model, String> {
     let base_url = args.base_url.clone();
+    let ignored = AiSettings::default();
+    let settings = if base_url.is_some() { &ignored } else { settings };
     let provider = args.provider.or(settings.provider).or_else(|| {
         if base_url.is_some() {
             Some(Provider::Openai)

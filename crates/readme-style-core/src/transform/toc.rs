@@ -33,7 +33,7 @@ fn render(doc: &Document, cx: &Context<'_>) -> Vec<String> {
         } else if inside_entry_list {
             continue;
         }
-        if heading.level <= deepest && !is_toc_title(&heading.text) {
+        if heading.level <= deepest && !is_toc_title(&heading.text) && heading.has_anchor_text() {
             entries.push(heading);
         }
     }

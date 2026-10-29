@@ -34,6 +34,20 @@ All notable changes are listed here. The format follows
 - A dark logo variant works for file names with non-ASCII characters; custom theme names are
   checked; an unrelated broken `package.json` or manifest no longer stops styling; license files
   are found by any capitalization, with the same result on every operating system.
+- A lone carriage return followed by an inserted blank line no longer reads as one CRLF (which
+  merged paragraphs); new lines take the file's most common ending, lone CR included, and every
+  result is checked to read back as the styled text.
+- `--write` creates its temporary file under a fresh name, so a file planted at the old fixed name
+  is never followed; it no longer writes through a symlinked README that points outside the
+  repository; and a hard-linked README is left intact when the disk is full or a size limit is hit.
+- `suggest --base-url` ignores the `[ai]` table, so a repository cannot choose which of your keys
+  is sent to the server you named.
+- Callouts: text after the lead-in that GitHub would read as a heading underline (`--`) or a table
+  row (`:--`) is escaped, and so is text that looks like a link or footnote definition instead of
+  being refused; a line break after the text is kept, and the guard now compares line breaks.
+- Front matter with keys such as `C++:` is recognized; `---`, a `# Heading`, `---` is not front
+  matter.
+- Headings made only of an image or HTML get no empty table of contents or nav entry.
 
 ## [0.2.0] - 2026-10-29
 

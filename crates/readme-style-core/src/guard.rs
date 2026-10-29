@@ -2,8 +2,8 @@
 //!
 //! Both versions are stripped of everything readme-style generates, rendered to HTML the way
 //! GitHub renders them, and reduced to a sequence of atoms: words, code (exact), link
-//! targets, image sources with alt text, heading levels and block boundaries. The sequences
-//! must be equal.
+//! targets, image sources with alt text, heading levels, line breaks and block boundaries. The
+//! sequences must be equal.
 //!
 //! Two presentation changes are allowed by construction. A GitHub alert renders its kind as a
 //! title ("Note"), which stands in for the "**Note:**" lead-in it replaced. Emoji are not
@@ -62,6 +62,7 @@ enum Atom {
     Image { src: String, alt: String },
     Heading(String),
     Break,
+    LineBreak,
 }
 
 impl fmt::Display for Atom {
@@ -73,6 +74,7 @@ impl fmt::Display for Atom {
             Atom::Image { src, .. } => write!(f, "<image {src}>"),
             Atom::Heading(tag) => write!(f, "<{tag}>"),
             Atom::Break => f.write_str("/"),
+            Atom::LineBreak => f.write_str("<br>"),
         }
     }
 }
@@ -152,6 +154,7 @@ fn atoms(text: &str) -> Vec<(Atom, Option<usize>)> {
                             push(&mut atoms, Atom::Link(href.to_owned()), line, &mut false);
                         }
                     }
+                    "br" => push(&mut atoms, Atom::LineBreak, line, &mut false),
                     "img" => {
                         let src = tag.attr("src").unwrap_or_default().to_owned();
                         let alt = tag.attr("alt").unwrap_or_default().to_owned();

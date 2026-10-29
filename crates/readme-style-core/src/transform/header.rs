@@ -12,16 +12,26 @@ use crate::outline::is_toc_title;
 use crate::theme::{HeaderPosition, NavStyle};
 
 /// Sections a nav bar prefers when there are more than it has room for, most wanted first:
-/// where to start and how to use it, then what the project shows, then the sections every
-/// README ends with.
-static NAV_TIERS: LazyLock<[Regex; 3]> = LazyLock::new(|| {
+/// where to start and how to use it, then what the project shows. Sections no pattern knows
+/// come next, since they are usually what the project is about; the sections every README ends
+/// with come last.
+static NAV_TIERS: LazyLock<[Regex; 2]> = LazyLock::new(|| {
     [
-        r"features?|highlights|overview|why\b.*|install(?:ation|ing)?|setup|getting started|quick ?start|usage|how to use|examples?|demo|tutorial|documentation|docs|api(?: reference)?|reference|configuration|config",
+        r"features?|highlights|overview|why\b.*|install(?:ation|ing)?|setup|getting started|quick ?start|usage|how to (?:install|use)|examples?|demo|tutorial|documentation|docs|api(?: reference)?|reference|configuration|config",
         r"benchmarks?|results|performance|evaluation|models?|checkpoints|datasets?|model zoo|citation|cite|citing|faq|frequently asked questions",
-        r"contribut\w*|licen[cs]e",
     ]
-    .map(|names| Regex::new(&format!(r"(?i)^\W*(?:{names})\W*$")).expect("valid regex"))
+    .map(anchored)
 });
+static NAV_LAST: LazyLock<Regex> = LazyLock::new(|| {
+    anchored(
+        r"contribut\w*|licen[cs]e|code of conduct|security(?: policy| vulnerabilities)?|acknowledg\w*|credits?|thanks|sponsors?(?: (?:&|and) support)?|backers|supporters|donations?|star history|stargazers|authors?|maintainers?|team|who we are|contact|support|feedback|community|communication|social|translat\w*|related(?: projects)?|similar projects|see also|change ?log|release notes|history|news|roadmap|disclaimers?|trademarks?|badges|used by|testimonials",
+    )
+});
+
+fn anchored(names: &str) -> Regex {
+    Regex::new(&format!(r"(?i)^\W*(?:{names})\W*$")).expect("valid regex")
+}
+
 static DOCS_SECTION: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?i)^\W*(documentation|docs)\W*$").expect("valid regex"));
 static WORD: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\w+").expect("valid regex"));
@@ -71,7 +81,11 @@ fn nav_tier(title: &str) -> usize {
     NAV_TIERS
         .iter()
         .position(|tier| tier.is_match(title))
-        .unwrap_or(NAV_TIERS.len())
+        .unwrap_or(if NAV_LAST.is_match(title) {
+            NAV_TIERS.len() + 1
+        } else {
+            NAV_TIERS.len()
+        })
 }
 
 fn nav_bar(doc: &Document, cx: &Context<'_>) -> Option<String> {
@@ -81,7 +95,9 @@ fn nav_bar(doc: &Document, cx: &Context<'_>) -> Option<String> {
         .sections
         .iter()
         .map(|&i| &doc.headings[i])
-        .filter(|h| !is_toc_title(&h.text) && h.text.chars().count() <= NAV_LABEL_MAX_CHARS)
+        .filter(|h| {
+            !is_toc_title(&h.text) && h.has_anchor_text() && h.text.chars().count() <= NAV_LABEL_MAX_CHARS
+        })
         .collect();
     let docs = cx
         .facts

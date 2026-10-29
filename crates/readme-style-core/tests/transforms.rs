@@ -44,6 +44,17 @@ fn callout_text_keeps_its_meaning() {
         ("**Note:**\n2. step", "> [!NOTE]\n> 2\\. step"),
         ("**Note:**\n    x", "> [!NOTE]\n> x"),
         ("> **Note**\n> 2. step", "> [!NOTE]\n> 2\\. step"),
+        // GitHub reads the line after `[!NOTE]` as a continuation: `--` would make a heading.
+        ("**Note:** --", "> [!NOTE]\n> \\--"),
+        ("**Note:** :--", "> [!NOTE]\n> \\:--"),
+        // ... and the guard's parser as a paragraph start, where this would be a definition.
+        (
+            "**Note:** [foo]: https://example.com",
+            "> [!NOTE]\n> \\[foo]: https://example.com",
+        ),
+        ("**Note:** [^1]: see below", "> [!NOTE]\n> \\[^1]: see below"),
+        // Two trailing spaces are a line break, and stay one.
+        ("**Note:** text  \nmore", "> [!NOTE]\n> text  \n> more"),
     ];
     for (source, expected) in cases {
         assert_eq!(
@@ -70,6 +81,9 @@ fn callouts_leave_other_text_alone() {
         "> **Note:**\n>\n> a separate paragraph",
         "- **Note:** inside a list",
         "> > **Note:** nested",
+        // The alert title would take the place of the line break.
+        "**Note:**  \nafter a break",
+        "> **Note:**  \n> after a break",
     ];
     for source in untouched {
         assert_eq!(
@@ -118,6 +132,30 @@ fn table_of_contents_needs_sections_and_respects_the_users_own() {
     assert!(!run("# T\n\n## A\n\n## B\n", "minimal").contains("readme-style:toc"));
     let own = "# T\n\n## Table of Contents\n\n- [A](#a)\n\n## A\n\n## B\n\n## C\n\n## D\n";
     assert!(!run(own, "minimal").contains("readme-style:toc"));
+}
+
+#[test]
+fn nothing_is_placed_between_a_paragraph_and_its_table() {
+    // Above a table, `[ref]: ...` is text; alone, it would be a link definition.
+    let readme = "# Project\n\nA short pitch.\n\n[A][ref]\n\n[ref]: https://example.com\n\n[ref]: https://example.com\n| a | b |\n|---|---|\n| 1 | 2 |\n";
+    for theme in ["minimal", "startup", "ml-research", "cli", "docs"] {
+        let out = run(readme, theme);
+        assert!(
+            out.contains("[ref]: https://example.com\n| a | b |"),
+            "{theme}:\n{out}"
+        );
+    }
+}
+
+#[test]
+fn headings_without_text_get_no_entry() {
+    let readme =
+        "# T\n\n## ![Demo](demo.gif)\n\n## <img src=\"logo.png\" alt=\"Logo\">\n\n## A\n\n## B\n\n## C\n";
+    for theme in ["docs", "startup"] {
+        let out = run(readme, theme);
+        assert!(!out.contains("[](#"), "{theme}:\n{out}");
+        assert!(out.contains("[A](#a)"), "{theme}:\n{out}");
+    }
 }
 
 #[test]
@@ -315,7 +353,7 @@ fn nav_prefers_well_known_sections() {
     assert_eq!(
         nav,
         "**[Intro](#intro)** · **[Features](#features)** · **[Background](#background)** · \
-         **[Installation](#installation)** · **[Usage](#usage)** · **[License](#license)**"
+         **[Installation](#installation)** · **[Design](#design)** · **[Usage](#usage)**"
     );
 }
 

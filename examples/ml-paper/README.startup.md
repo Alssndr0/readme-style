@@ -9,7 +9,7 @@ Official implementation of **SparseFlow** (NeurIPS 2026).
 <!-- readme-style:header theme=startup -->
 [![Tests](https://img.shields.io/github/actions/workflow/status/acme-lab/sparseflow/tests.yml?label=Tests&logo=github&style=for-the-badge)](https://github.com/acme-lab/sparseflow/actions/workflows/tests.yml) [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue?style=for-the-badge)](LICENSE)
 
-**[News](#news)** · **[Installation](#installation)** · **[Quick Start](#quick-start)** · **[Results](#results)** · **[Citation](#citation)** · **[License](#license)**
+**[News](#news)** · **[Installation](#installation)** · **[Quick Start](#quick-start)** · **[Results](#results)** · **[Training](#training)** · **[Citation](#citation)**
 
 ---
 <!-- /readme-style:header -->

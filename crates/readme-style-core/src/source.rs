@@ -48,7 +48,11 @@ impl Normalized {
         let body = raw.strip_prefix(BOM).unwrap_or(raw);
         let lines = split(body);
         let count = |ending: &str| lines.iter().filter(|(_, e)| *e == ending).count();
-        let newline = if count("\r\n") > count("\n") { "\r\n" } else { "\n" };
+        let newline = ["\r\n", "\r"]
+            .into_iter()
+            .filter(|ending| count(ending) > count("\n"))
+            .max_by_key(|ending| count(ending))
+            .unwrap_or("\n");
         let mut text = String::with_capacity(body.len());
         for (line, ending) in &lines {
             text.push_str(line);
@@ -87,6 +91,13 @@ impl Normalized {
                 }
             }
         }
+        // A lone CR followed by an empty line ending in LF would read as one CRLF, and the
+        // blank line would disappear: such an empty line ends with CR too.
+        for i in 1..new.len() {
+            if endings[i - 1] == "\r" && new[i].is_empty() && endings[i] == "\n" {
+                endings[i] = "\r";
+            }
+        }
         let mut out = String::with_capacity(text.len() + 16);
         if self.bom {
             out.push(BOM);
@@ -115,6 +126,56 @@ mod tests {
             normalized.restore("# Title\n\nnew\n\ntext\n"),
             "\u{feff}# Title\r\n\r\nnew\r\n\r\ntext\r\n"
         );
+    }
+
+    #[test]
+    fn new_lines_take_the_most_common_ending() {
+        let normalized = Normalized::new("# T\r\rText.\r");
+        assert_eq!(
+            normalized.restore("# T\n\nnew\n\nText.\n"),
+            "# T\r\rnew\r\rText.\r"
+        );
+    }
+
+    #[test]
+    fn a_lone_cr_never_merges_with_a_following_blank_line() {
+        // One CR among LF lines: the blank line inserted after it must not turn into CRLF.
+        let normalized = Normalized::new("First.\rSecond.\n\nThird.\n");
+        let styled = "First.\n\nSecond.\n\nThird.\n";
+        let restored = normalized.restore(styled);
+        assert_eq!(restored, "First.\r\rSecond.\n\nThird.\n");
+        assert_eq!(Normalized::new(&restored).text, styled);
+    }
+
+    proptest::proptest! {
+        /// Whatever the endings and the edits, the restored text reads back as the styled text.
+        #[test]
+        fn restoring_keeps_the_text(
+            lines in proptest::collection::vec(("[a-c]{0,2}", 0..3usize), 0..12),
+            edits in proptest::collection::vec((0..14usize, proptest::bool::ANY, "[a-c]{0,2}"), 0..6),
+            last_newline in proptest::bool::ANY,
+        ) {
+            let mut raw = String::new();
+            for (line, ending) in &lines {
+                raw.push_str(line);
+                raw.push_str(["\n", "\r\n", "\r"][*ending]);
+            }
+            if !last_newline {
+                raw.push_str("tail");
+            }
+            let normalized = Normalized::new(&raw);
+            let mut styled: Vec<String> = normalized.text.split('\n').map(str::to_owned).collect();
+            for (at, insert, line) in edits {
+                let at = at.min(styled.len().saturating_sub(1));
+                if insert {
+                    styled.insert(at, line);
+                } else if styled.len() > 1 {
+                    styled.remove(at);
+                }
+            }
+            let styled = styled.join("\n");
+            proptest::prop_assert_eq!(Normalized::new(&normalized.restore(&styled)).text, styled);
+        }
     }
 
     #[test]
