@@ -12,6 +12,9 @@
 //! [badges]
 //! exclude = ["downloads"]
 //!
+//! [ai]                        # only for `readme-style suggest`
+//! provider = "anthropic"
+//!
 //! [themes.brand]
 //! extends = "startup"
 //! badges.color = "ff6600"
@@ -48,6 +51,8 @@ pub struct Config {
     pub overrides: Table,
     /// Built-in themes plus the ones the configuration defines.
     pub themes: Themes,
+    /// The `[ai]` table, read by tools that offer model suggestions; the engine ignores it.
+    pub ai: Table,
 }
 
 impl Config {
@@ -86,6 +91,12 @@ impl Config {
                 )));
             }
             config.theme = Some(name.to_owned());
+        }
+        if let Some(ai) = table.remove("ai") {
+            let Value::Table(ai) = ai else {
+                return Err(error("'ai' must be a table".into()));
+            };
+            config.ai = ai;
         }
         if let Some(repo) = table.remove("repo") {
             let repo = repo

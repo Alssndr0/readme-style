@@ -31,3 +31,8 @@ wildcards = "deny"
 [sources]
 unknown-registry = "deny"
 unknown-git = "deny"
+
+# Mozilla's root certificates, as data, for `readme-style suggest`'s HTTPS.
+[[licenses.exceptions]]
+crate = "webpki-roots"
+allow = ["CDLA-Permissive-2.0"]

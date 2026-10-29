@@ -155,6 +155,21 @@ badges.color = "ff6600"
 
 Every setting is listed in [docs/configuration.md](docs/configuration.md).
 
+## Suggestions from a model
+
+Styling never needs a model. For the two things that do take judgment, `readme-style suggest` asks one
+and prints the answer; nothing is written, and once you paste a suggestion it is your text:
+
+```bash
+readme-style suggest tagline                     # three one-line pitches, from the README and metadata
+readme-style suggest diagram                     # a Mermaid flowchart of the architecture
+readme-style suggest tagline --base-url http://127.0.0.1:8000/v1   # a local OpenAI-compatible server
+```
+
+It uses Anthropic's API when `ANTHROPIC_API_KEY` is set (Claude Opus 5.5 by default, with
+refusal fallbacks), or any OpenAI-compatible server such as vLLM, Ollama or LM Studio; set it with
+flags or an `[ai]` table in the configuration. This is the only command that uses the network.
+
 ## Use it in CI
 
 ### GitHub Action
@@ -183,9 +198,6 @@ repos:
 
 ## Roadmap
 
-- An optional LLM layer for extras that need judgment, such as a tagline or a Mermaid architecture
-  diagram, written once into a frozen region and never touching your text. Any OpenAI-compatible
-  endpoint, including a local model.
 - Generated SVG banners per theme, in light and dark variants.
 - A browser playground built from the same engine compiled to WebAssembly.
 - A gallery of before and after on well-known repositories.

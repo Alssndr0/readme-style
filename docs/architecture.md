@@ -4,7 +4,7 @@ readme-style is a Cargo workspace with three crates:
 
 | Crate | Path | Role |
 |-------|------|------|
-| `readme-style` | `/` (root) | The command-line tool: arguments, files, diffs, reports, exit codes. |
+| `readme-style` | `/` (root) | The command-line tool: arguments, files, diffs, reports, exit codes, and `suggest` (the only network code). |
 | `readme-style-core` | `crates/readme-style-core` | The engine: parsing, project inspection, themes, transforms, the guard. No terminal, no process. |
 | `xtask` | `xtask` | Development tasks (corpus, gallery, debugging, screenshots). Never published. |
 
@@ -121,3 +121,12 @@ run; the largest README in the corpus (2,700 lines) takes about 110 ms. Parsing 
 engine parses once per change rather than once per step, and reads text from the tree instead of
 rendering and tokenizing every block. `cargo run --release -p readme-style-core --example profile --
 README.md` times each stage.
+
+## Suggestions
+
+`readme-style suggest` (in `src/suggest/`) is deliberately outside the engine. It builds a prompt
+from the README, the project facts and, for diagrams, a two-level file listing; sends it to Anthropic's
+Messages API or an OpenAI-compatible server (plain HTTP with `ureq`, retries on 408, 409, 429 and
+5xx); checks why the answer stopped (a refusal or a truncation is an error, never a suggestion); and
+prints what it parsed. It never writes, so the guarantees above are untouched: a pasted suggestion is
+user content like any other. `tests/suggest.rs` runs it against a local mock server.

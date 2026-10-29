@@ -24,6 +24,7 @@ root (the nearest folder with `.git` or `.github`), and the first match wins:
 | `theme` | string | The theme to apply: a built-in one or one defined under `themes`. |
 | `repo` | `"owner/name"` | The GitHub repository, when there is no GitHub `origin` remote and no repository URL in the metadata. |
 | `themes` | table of tables | Themes of your own; see [themes.md](themes.md). |
+| `ai` | table | The model `readme-style suggest` asks; see below. Styling ignores it. |
 
 Every other key is a theme table, merged over the selected theme. Unknown keys are errors, reported
 with the file they are in.
@@ -124,3 +125,21 @@ its sections) gets none added. Subsections of changelog, news and FAQ sections a
 | `enabled` | `false` | A right-aligned link back to the title after long sections. |
 | `min-lines` | `25` | Only after sections with at least this many non-blank lines. |
 | `label` | `"Back to top"` | The link text. |
+
+## `[ai]`: the model for `readme-style suggest`
+
+Only `readme-style suggest` reads this table; styling never uses a model. Flags (`--provider`,
+`--model`, `--base-url`) win over it, and it wins over the environment.
+
+| Key | Default | Meaning |
+|-----|---------|---------|
+| `provider` | detected | `anthropic`, or `openai` for any server with the OpenAI chat-completions API. Without it: `openai` when a base URL is set, then `anthropic` when `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN` is set, then `openai` when `OPENAI_BASE_URL` or `OPENAI_API_KEY` is. |
+| `model` | `claude-opus-5-5` for Anthropic; the server's only model otherwise | The model name. |
+| `base-url` | `https://api.anthropic.com`, or `OPENAI_BASE_URL`, or `https://api.openai.com/v1` | Where to send requests; `ANTHROPIC_BASE_URL` also works for Anthropic. |
+| `api-key-env` | `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` | The environment variable holding the key. Keys are never read from the configuration file. |
+
+```toml
+[ai]                                   # a local vLLM server
+provider = "openai"
+base-url = "http://127.0.0.1:8000/v1"
+```

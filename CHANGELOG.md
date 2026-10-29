@@ -6,6 +6,12 @@ All notable changes are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `readme-style suggest tagline` and `readme-style suggest diagram` ask a model (Anthropic, or any
+  OpenAI-compatible server such as a local vLLM) for a tagline or a Mermaid architecture diagram and
+  print the suggestions. Configured with flags, an `[ai]` table, or the environment.
+
 ## [0.2.0] - 2026-10-29
 
 ### Changed
