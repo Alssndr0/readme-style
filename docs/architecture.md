@@ -121,7 +121,8 @@ Styling a typical README takes 3 to 10 ms in a release build, including the guar
 run; the largest README in the corpus (2,700 lines) takes about 110 ms. Parsing dominates, so the
 engine parses once per change rather than once per step, and reads text from the tree instead of
 rendering and tokenizing every block. `cargo run --release -p readme-style-core --example profile --
-README.md` times each stage.
+README.md` times each stage. The WebAssembly build is about as fast in Chrome: 15 ms for an example
+project, 75 to 110 ms for the largest corpus README, so the playground can restyle as you type.
 
 ## The playground
 
