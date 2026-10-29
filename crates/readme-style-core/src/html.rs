@@ -8,6 +8,8 @@ pub(crate) enum Tag {
     Start {
         name: String,
         attrs: Vec<(String, String)>,
+        /// Written `<name/>`.
+        self_closing: bool,
     },
     End(String),
     Text(String),
@@ -33,6 +35,7 @@ pub(crate) fn tokenize(html: &str) -> Vec<Tag> {
     for token in Tokenizer::new(html).flatten() {
         match token {
             Token::StartTag(tag) => tags.push(Tag::Start {
+                self_closing: tag.self_closing,
                 name: owned(tag.name),
                 attrs: tag
                     .attributes
@@ -46,6 +49,27 @@ pub(crate) fn tokenize(html: &str) -> Vec<Tag> {
         }
     }
     tags
+}
+
+/// Whether `html` closes every `element` it opens: a block that leaves a `<div>` or a
+/// `<details>` open wraps whatever follows it.
+pub(crate) fn closes(html: &str, elements: &[&str]) -> bool {
+    let mut depth = vec![0i32; elements.len()];
+    for tag in tokenize(html) {
+        let (name, step) = match &tag {
+            Tag::Start {
+                name,
+                self_closing: false,
+                ..
+            } => (name, 1),
+            Tag::End(name) => (name, -1),
+            _ => continue,
+        };
+        if let Some(i) = elements.iter().position(|e| e.eq_ignore_ascii_case(name)) {
+            depth[i] += step;
+        }
+    }
+    depth.iter().all(|&d| d <= 0)
 }
 
 /// An `<img>`, as a browser would see it.
@@ -88,6 +112,25 @@ pub(crate) fn escape(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn wrappers_are_closed_or_not() {
+        let wrappers = ["div", "details"];
+        for html in [
+            r#"<div align="center"><img src="a.png"><h1>T</h1></div>"#,
+            r#"<p align="center"><a href="x"><img src="a.png">"#,
+            "<details><summary>More</summary>text</details>",
+        ] {
+            assert!(super::closes(html, &wrappers), "{html}");
+        }
+        for html in [
+            "<details open>\n<summary>Contents</summary>",
+            "<div>",
+            "<DIV><div></div>",
+        ] {
+            assert!(!super::closes(html, &wrappers), "{html}");
+        }
+    }
 
     #[test]
     fn tokenizes_and_decodes() {

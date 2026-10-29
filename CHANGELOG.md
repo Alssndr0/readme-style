@@ -14,7 +14,8 @@ All notable changes are listed here. The format follows
   model only: a repository cannot choose where your key is sent).
 - A before-and-after gallery in `examples/`: four projects, every theme, what changed and the diff.
 - A browser playground (`cargo xtask playground`): the engine compiled to WebAssembly, with a
-  sandboxed preview, the diff, badge evidence, the examples, and project folders read in the page.
+  sanitized, sandboxed preview, the diff, badge evidence, the examples, and project folders read in
+  the page.
 
 ### Changed
 
@@ -57,8 +58,18 @@ All notable changes are listed here. The format follows
 - `> **Warning:**` followed by a list or a heading in the same quote becomes an alert holding that
   block, instead of being refused. A definition-like opening keeps its reference link
   (`[x]\:`), and a one-column table row with a trailing pipe is escaped.
-- Section titles with emoji such as `❤️` or `🗂️` (which end with a variation selector) are
-  recognized for the nav bar, the table of contents and folding.
+- Section titles with emoji are recognized for the nav bar, the table of contents and folding,
+  including emoji that end with a variation selector (`❤️`), count as letters (`ℹ️`), are keycaps
+  (`1️⃣`) or are written as shortcodes (`:rocket:`).
+- A lead-in alone in a quote becomes an alert holding the next block only when that block always
+  shows (a list, heading, code, quote, table or rule): GitHub shows `[!NOTE]` as text when an alert
+  holds only a comment or invisible HTML.
+- A link is followed only if it stays in the repository it sits in, so a folder link to another
+  repository is refused too, and `..` from inside a nested repository works. A README in a folder
+  that cannot be written is rewritten in place.
+- An HTML block that leaves a `<details>`, `<div>` or table open, or holds a folded section, a list
+  or a table, is no longer taken for part of the hero or the tagline, so the header is never placed
+  inside it; a `<summary>` titled like a table of contents counts as the README's own.
 
 ## [0.2.0] - 2026-10-29
 

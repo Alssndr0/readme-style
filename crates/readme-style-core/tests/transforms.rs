@@ -95,6 +95,11 @@ fn callouts_leave_other_text_alone() {
         "> **Note:**\n>\n> a separate paragraph",
         "- **Note:** inside a list",
         "> > **Note:** nested",
+        // GitHub shows `[!NOTE]` as text when nothing visible follows it.
+        "> **Note:**\n> <!-- TODO: link the migration guide -->",
+        "> **Note:**\n> <p align=\"center\">Centered words.</p>",
+        "> **Tip:**\n> <!-- keep in sync -->\n> Use the cache.",
+        "See[^1].\n\n> **Note:**\n> [^1]: The footnote.",
         // The alert title would take the place of the line break.
         "**Note:**  \nafter a break",
         "> **Note:**  \n> after a break",
@@ -183,6 +188,37 @@ fn emoji_in_titles_do_not_hide_what_they_say() {
     assert!(!nav.contains("Contributing") && !nav.contains("License"), "{nav}");
     let own_toc = "# T\n\n## 🗂️ Table of Contents\n\n- [A](#a)\n- [B](#b)\n\n## A\n\n## B\n\n## C\n";
     assert!(!run(own_toc, "docs").contains("readme-style:toc"));
+    // `ℹ` is a letter to Unicode, and GitHub shows `:rocket:` as an emoji.
+    let names = [
+        "ℹ️ Overview",
+        ":rocket: Installation",
+        "Design",
+        "Internals",
+        "Ideas",
+        "Plugins",
+        "Ecosystem",
+    ];
+    let readme: String = std::iter::once("# T\n\n".to_owned())
+        .chain(names.iter().map(|n| format!("## {n}\n\n")))
+        .collect();
+    let out = run(&readme, "startup");
+    let nav = out.lines().find(|l| l.starts_with("**[")).expect("a nav bar");
+    assert!(nav.contains("Overview") && nav.contains("Installation"), "{nav}");
+}
+
+#[test]
+fn an_open_details_block_is_not_part_of_the_hero() {
+    let readme = "<div align=\"center\">\n  <img src=\"logo.png\" width=\"100\">\n  <h1>Proj</h1>\n  <p>A thing.</p>\n</div>\n\n<details open>\n<summary>Table of Contents</summary>\n\n- [Install](#install)\n- [Usage](#usage)\n\n</details>\n\n## Install\n\nRun it.\n\n## Usage\n\nUse it.\n";
+    let out = run(readme, "startup");
+    let header = out.find("readme-style:header").expect("a header");
+    assert!(
+        header < out.find("<details open>").expect("the details block"),
+        "{out}"
+    );
+    assert!(
+        !out.contains("**[Install](#install)**"),
+        "the README has its own contents:\n{out}"
+    );
 }
 
 #[test]

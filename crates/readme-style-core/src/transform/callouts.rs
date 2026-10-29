@@ -109,6 +109,19 @@ fn ends_with_line_break(line: &str) -> bool {
     line.ends_with("  ")
 }
 
+/// Blocks that always render something visible.
+fn shows(kind: BlockKind) -> bool {
+    matches!(
+        kind,
+        BlockKind::List
+            | BlockKind::Heading { .. }
+            | BlockKind::Code { .. }
+            | BlockKind::BlockQuote
+            | BlockKind::Table
+            | BlockKind::ThematicBreak
+    )
+}
+
 fn quote(doc: &Document, block: &Block, ed: &mut Editor<'_>) {
     let Some(first) = QUOTE.captures(&doc.lines[block.start]) else {
         return;
@@ -134,11 +147,13 @@ fn quote(doc: &Document, block: &Block, ed: &mut Editor<'_>) {
             return;
         };
         // The lead-in's paragraph either goes on to the next line, or ends there and the next
-        // line opens a block of its own (a list, a heading), which the alert keeps as it is.
+        // line opens a block of its own, which the alert keeps as it is. GitHub only shows an
+        // alert with something visible in it, so that block must be one that always shows: raw
+        // HTML may be a comment, and a footnote definition moves to the end.
         let lead_in = Document::parse(&format!("{content}\n{}\n", &next[2]));
-        match lead_in.blocks.first() {
-            Some(b) if b.kind == BlockKind::Paragraph && b.end >= 2 => {}
-            Some(b) if b.kind == BlockKind::Paragraph && !next[2].trim().is_empty() => {
+        match (lead_in.blocks.first(), lead_in.blocks.get(1)) {
+            (Some(first), _) if first.kind == BlockKind::Paragraph && first.end >= 2 => {}
+            (Some(first), Some(second)) if first.kind == BlockKind::Paragraph && shows(second.kind) => {
                 ed.replace_exact(block.start, end, lines);
                 return;
             }

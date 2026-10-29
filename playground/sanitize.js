@@ -9,21 +9,22 @@ const ELEMENTS = new Set([
   "dfn", "div", "dl", "dt", "em", "figcaption", "figure", "h1", "h2", "h3", "h4", "h5", "h6", "hr",
   "i", "img", "input", "ins", "kbd", "li", "mark", "ol", "p", "picture", "pre", "q", "rp", "rt",
   "ruby", "s", "samp", "section", "small", "source", "span", "strike", "strong", "sub", "summary",
-  "sup", "table", "tbody", "td", "tfoot", "th", "thead", "time", "tr", "tt", "ul", "var", "wbr",
+  "sup", "table", "tbody", "td", "tfoot", "th", "thead", "time", "tr", "tt", "ul", "var", "video",
+  "wbr",
 ]);
 
 /** Elements removed with everything inside them. */
 const REMOVE = new Set([
   "script", "style", "template", "svg", "math", "iframe", "frame", "frameset", "object", "embed",
   "noscript", "noembed", "noframes", "textarea", "select", "option", "title", "xmp", "head", "meta",
-  "base", "link", "map", "area", "form", "button", "dialog", "slot", "canvas", "audio", "video",
+  "base", "link", "map", "area", "form", "button", "dialog", "slot", "canvas", "audio",
 ]);
 
 const ATTRIBUTES = new Set([
   "abbr", "align", "alt", "aria-describedby", "aria-hidden", "aria-label", "aria-labelledby",
-  "border", "cellpadding", "cellspacing", "cite", "colspan", "datetime", "dir", "height", "hspace",
-  "id", "lang", "name", "open", "role", "rowspan", "scope", "span", "start", "summary", "title",
-  "valign", "value", "vspace", "width",
+  "border", "cellpadding", "cellspacing", "colspan", "datetime", "dir", "height", "hspace", "id",
+  "lang", "name", "nowrap", "open", "role", "rowspan", "scope", "span", "start", "summary",
+  "title", "valign", "value", "vspace", "width",
 ]);
 
 const PER_ELEMENT = {
@@ -32,10 +33,13 @@ const PER_ELEMENT = {
   source: ["srcset", "media", "type"],
   ol: ["type"],
   input: ["type", "checked", "disabled"],
+  video: ["src", "poster", "controls", "muted", "loop", "playsinline"],
 };
 
 /** Classes that the Markdown renderer itself produces, which the preview's styles rely on. */
 const CLASS = /^(markdown-alert[\w-]*|anchor|footnotes|footnote-ref|footnote-backref|task-list-item|contains-task-list|data-footnote-backref)$/;
+
+const PREFIX = "user-content-";
 
 const SAFE_LINK = /^(https?:|mailto:|#|[^:]*$|[^:]*[/?#])/i;
 const SAFE_SOURCE = /^(https?:|[^:]*$|[^:]*[/?#])/i;
@@ -57,11 +61,15 @@ function clean(element) {
       }
     }
     if (keep && name === "href") keep = safeUrl(attribute.value, SAFE_LINK);
-    if (keep && name === "src") keep = safeUrl(attribute.value, SAFE_SOURCE);
+    if (keep && (name === "src" || name === "poster")) keep = safeUrl(attribute.value, SAFE_SOURCE);
     if (keep && name === "srcset") {
       keep = attribute.value.split(",").every((c) => safeUrl(c.trim().split(/\s+/)[0] ?? "", SAFE_SOURCE));
     }
-    if (keep && tag === "input" && name === "type") keep = attribute.value.toLowerCase() === "checkbox";
+    if (keep && (name === "id" || name === "name") && !attribute.value.startsWith(PREFIX)) {
+      // As on GitHub: a README's ids and names cannot shadow the page's own (DOM clobbering).
+      element.setAttribute(name, PREFIX + attribute.value);
+      continue;
+    }
     if (!keep) element.removeAttribute(attribute.name);
   }
   if (element.localName === "input") element.setAttribute("disabled", "");
@@ -76,7 +84,8 @@ function walk(root) {
     }
     if (node.nodeType !== Node.ELEMENT_NODE) continue;
     const tag = node.localName;
-    if (REMOVE.has(tag) || node.namespaceURI !== "http://www.w3.org/1999/xhtml") {
+    const checkbox = tag === "input" && node.getAttribute("type")?.toLowerCase() === "checkbox";
+    if (REMOVE.has(tag) || node.namespaceURI !== "http://www.w3.org/1999/xhtml" || (tag === "input" && !checkbox)) {
       node.remove();
       continue;
     }

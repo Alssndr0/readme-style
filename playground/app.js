@@ -214,9 +214,9 @@ function load(project, label) {
   restyle();
 }
 
-/** A README pasted over an example is the user's own: the example's files no longer apply. */
-function detachFromExample(pasted) {
-  if (state.project.kind !== "example" || pasted.length < ui.source.value.length / 2) return;
+/** A README pasted over a whole example is the user's own: the example's files no longer apply. */
+function detachFromExample() {
+  if (state.project.kind !== "example") return;
   state.project = { kind: "pasted", readme: { path: "README.md" }, files: {}, images: new Map(), truncated: false };
   ui.example.value = "";
   ui.path.textContent = "README.md";
@@ -268,9 +268,10 @@ async function main() {
     });
     ui.folder.addEventListener("change", () => openFolder([...ui.folder.files]));
     ui.source.addEventListener("input", debounce(restyle, 150));
-    ui.source.addEventListener("paste", (event) => {
-      const pasted = event.clipboardData?.getData("text") ?? "";
-      setTimeout(() => detachFromExample(pasted));
+    ui.source.addEventListener("paste", () => {
+      // Pasting over everything (or into an empty editor) replaces the README.
+      const { selectionStart, selectionEnd, value } = ui.source;
+      if (selectionStart === 0 && selectionEnd === value.length) setTimeout(detachFromExample);
     });
     ui.repo.addEventListener("input", debounce(restyle, 300));
     ui.theme.addEventListener("change", restyle);

@@ -2,9 +2,7 @@
 
 use std::fs::{self, OpenOptions};
 use std::io::{self, Seek as _, SeekFrom, Write as _};
-use std::path::{Path, PathBuf};
-
-use readme_style_core::project::{OsFs, find_root};
+use std::path::{Component, Path, PathBuf};
 
 const README_NAMES: &[&str] = &[
     "README.md",
@@ -25,29 +23,54 @@ pub(crate) fn find_readme(path: &Path) -> Option<PathBuf> {
     path.is_file().then(|| path.to_path_buf())
 }
 
-/// The file a README path names, after symbolic links, provided it lies in the repository the
-/// path itself is in (and not inside `.git`). A link in a cloned repository, to the README or
-/// to a folder above it, must not point readme-style at a file elsewhere: not to rewrite it,
-/// and not to print it in a diff.
+/// The file a README path names, after symbolic links, provided no link on the way leaves the
+/// repository it sits in, or points into a `.git` folder. A link inside a cloned repository, to
+/// the README or to a folder above it, must not point readme-style at a file elsewhere: not to
+/// rewrite it, not to print it in a diff, not to send it to a model. Links outside any
+/// repository, such as a projects folder linked from home, are followed as usual.
 pub(crate) fn resolve_readme(path: &Path) -> io::Result<PathBuf> {
-    let target = fs::canonicalize(path)?;
-    let lexical = std::path::absolute(path)?;
-    let folder = lexical.parent().unwrap_or(Path::new("/"));
-    let root = fs::canonicalize(find_root(&OsFs, folder))?;
-    let inside = target.strip_prefix(&root).is_ok_and(|rest| {
-        rest.components()
-            .next()
-            .is_none_or(|first| first.as_os_str() != ".git")
-    });
-    if inside {
-        Ok(target)
-    } else {
-        Err(io::Error::other(format!(
-            "it leads to {}, outside the repository at {}; run readme-style on that file directly if you mean to",
-            target.display(),
-            root.display()
-        )))
+    let mut real = PathBuf::new();
+    for component in std::path::absolute(path)?.components() {
+        match component {
+            Component::Prefix(_) | Component::RootDir => real.push(component),
+            Component::CurDir => {}
+            Component::ParentDir => {
+                real.pop();
+            }
+            Component::Normal(name) => {
+                let next = real.join(name);
+                if !fs::symlink_metadata(&next)?.file_type().is_symlink() {
+                    real = next;
+                    continue;
+                }
+                let resolved = fs::canonicalize(&next)?;
+                if let Some(repository) = repository_of(&real) {
+                    let inside = resolved
+                        .strip_prefix(&repository)
+                        .is_ok_and(|rest| rest.components().all(|c| c.as_os_str() != ".git"));
+                    if !inside {
+                        return Err(io::Error::other(format!(
+                            "{} leads to {}, outside the repository at {}; run readme-style on that file directly if you mean to",
+                            next.display(),
+                            resolved.display(),
+                            repository.display()
+                        )));
+                    }
+                }
+                real = resolved;
+            }
+        }
     }
+    Ok(real)
+}
+
+/// The repository a real (link-free) folder is in: the nearest folder holding `.git` or
+/// `.github`.
+fn repository_of(folder: &Path) -> Option<PathBuf> {
+    folder
+        .ancestors()
+        .find(|dir| dir.join(".git").exists() || dir.join(".github").is_dir())
+        .map(Path::to_path_buf)
 }
 
 /// Replace the README at `path` with `content`; `original` is what was read from it.
@@ -69,10 +92,18 @@ pub(crate) fn write_readme(path: &Path, content: &str, original: &str) -> io::Re
     let name = target
         .file_name()
         .map_or_else(|| "README".into(), |n| n.to_string_lossy().into_owned());
-    let mut temp = tempfile::Builder::new()
+    let temp = tempfile::Builder::new()
         .prefix(&format!(".{name}."))
         .suffix(".readme-style.tmp")
-        .tempfile_in(folder)?;
+        .tempfile_in(folder);
+    let mut temp = match temp {
+        Ok(temp) => temp,
+        // A writable README in a folder that is not: it can only be rewritten in place.
+        Err(e) if e.kind() == io::ErrorKind::PermissionDenied => {
+            return rewrite_in_place(&target, content, original);
+        }
+        Err(e) => return Err(e),
+    };
     temp.write_all(content.as_bytes())?;
     temp.as_file().sync_all()?;
     if hard_linked(&target)? || !takes_ownership(temp.as_file(), &target)? {

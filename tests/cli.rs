@@ -256,11 +256,32 @@ fn links_never_lead_out_of_the_repository() {
         .code(2)
         .stdout(predicate::str::contains("do-not-print").not())
         .stderr(predicate::str::contains("will not read"));
+    // Even when the folder linked to is a repository of its own.
+    fs::create_dir(outside.path().join(".git")).expect("outside repository");
+    let dir = project(&[]);
+    std::os::unix::fs::symlink(outside.path(), dir.path().join("docs")).expect("folder link");
+    cli().arg("--check").arg(dir.path().join("docs")).assert().code(2);
+    // Nor into any .git, nested ones included.
+    let dir = project(&[("vendor/lib/.git/description", "nested\n")]);
+    std::os::unix::fs::symlink("vendor/lib/.git/description", dir.path().join("README.md")).expect("link");
+    cli().arg("--check").arg(dir.path()).assert().code(2);
     // And into .git.
     let dir = project(&[(".git/hooks/pre-commit", "#!/bin/sh\n")]);
     std::os::unix::fs::symlink(".git/hooks/pre-commit", dir.path().join("README.md")).expect("link");
     cli().arg("--write").arg(dir.path()).assert().code(2);
     assert_eq!(read(&dir.path().join(".git/hooks/pre-commit")), "#!/bin/sh\n");
+}
+
+#[test]
+fn a_parent_folder_outside_the_current_repository_is_fine() {
+    let parent = TempDir::new().expect("temp dir");
+    fs::write(parent.path().join("README.md"), README).expect("readme");
+    fs::create_dir_all(parent.path().join("repo/.git")).expect("inner repository");
+    cli()
+        .current_dir(parent.path().join("repo"))
+        .args(["--check", ".."])
+        .assert()
+        .code(1);
 }
 
 #[cfg(unix)]

@@ -10,9 +10,10 @@ const FRAME_SCRIPT = `
 const TOKEN = FRAME_TOKEN;
 const tell = (message) => parent.postMessage({ ...message, token: TOKEN }, "*");
 const decode = (text) => { try { return decodeURIComponent(text); } catch { return text; } };
-const scrollTarget = (id) =>
-  document.getElementById(id) || document.getElementById("user-content-" + id);
-document.addEventListener("click", (event) => {
+// Taken before the README's own elements exist, which could otherwise shadow them by name.
+const byId = Document.prototype.getElementById.bind(document);
+const scrollTarget = (id) => byId("user-content-" + id) || byId(id);
+const follow = (event) => {
   const link = event.composedPath().find(
     (node) => node instanceof Element && (node.localName === "a" || node.localName === "area"));
   if (!link) return;
@@ -20,12 +21,15 @@ document.addEventListener("click", (event) => {
   const href = link.getAttribute("href") ?? "";
   if (href.startsWith("#")) {
     const id = decode(href.slice(1));
-    const target = id ? scrollTarget(id) : document.body;
+    const target = id ? scrollTarget(id) : null;
     if (target) target.scrollIntoView({ behavior: "smooth" });
+    else if (!id) scrollTo({ top: 0, behavior: "smooth" });
   } else if (href) {
     tell({ readmeStyle: "open", href });
   }
-}, true);
+};
+document.addEventListener("click", follow, true);
+document.addEventListener("auxclick", follow, true);
 addEventListener("scroll", () => tell({ readmeStyle: "scroll", y: scrollY }), { passive: true });
 addEventListener("DOMContentLoaded", () => scrollTo(0, INITIAL_SCROLL));
 `;
@@ -113,9 +117,15 @@ export async function previewDocument(html, { css, images, repo, scroll }) {
   const token = nonce();
   const doc = sanitize(html);
   await resolveImages(doc, { images, repo });
+  // Links show where they lead, so opening one in a new tab goes to the same place.
+  for (const link of doc.querySelectorAll("a[href]")) {
+    const target = linkTarget(link.getAttribute("href"), repo);
+    if (target) link.setAttribute("href", target);
+  }
   const policy = [
     "default-src 'none'",
     "img-src https: http: data:",
+    "media-src https: http:",
     "style-src 'unsafe-inline'",
     `script-src 'nonce-${n}'`,
     "base-uri 'none'",

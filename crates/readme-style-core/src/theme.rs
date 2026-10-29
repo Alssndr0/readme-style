@@ -198,10 +198,12 @@ impl Theme {
 }
 
 /// A pattern matched against a whole section title, ignoring case and the decoration around
-/// it: punctuation, emoji, and the variation selectors and joiners that complete an emoji (`❤️`
-/// ends with one, and `\W` alone counts it as part of a word).
+/// it: punctuation; emoji, including those Unicode counts as letters (`ℹ`) and keycaps (`1️⃣`);
+/// the variation selectors and joiners that complete an emoji (`❤️` ends with one, which `\W`
+/// alone counts as part of a word); and shortcodes such as `:rocket:`, which GitHub shows as
+/// emoji.
 pub(crate) fn whole_title(pattern: &str) -> Result<Regex, regex::Error> {
-    const DECORATION: &str = r"[\W\p{M}\x{200D}]*";
+    const DECORATION: &str = r"(?:[0-9#*]\x{FE0F}?\x{20E3}|[\W\p{Extended_Pictographic}\x{200D}\x{20E3}\x{FE0E}\x{FE0F}]|:[a-z0-9_+-]+:)*";
     Regex::new(&format!(r"(?i)^{DECORATION}(?:{pattern}){DECORATION}$"))
 }
 
@@ -349,6 +351,18 @@ fn merge(target: &mut Table, overlay: &Table) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn titles_match_whatever_decorates_them() {
+        let faq = whole_title("faq").expect("valid");
+        for title in ["FAQ", "❓ FAQ", ":question: FAQ", "FAQ 🙋‍♀️", "**FAQ:**", "1️⃣ FAQ"] {
+            assert!(faq.is_match(title), "{title}");
+        }
+        assert!(whole_title("overview").expect("valid").is_match("ℹ️ Overview"));
+        // A combining mark ends a word; it is not decoration.
+        assert!(!whole_title("कर").expect("valid").is_match("करो"));
+        assert!(!faq.is_match("FAQs and more"));
+    }
 
     fn table(text: &str) -> Table {
         text.parse().expect("valid TOML")

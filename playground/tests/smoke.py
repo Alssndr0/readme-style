@@ -183,6 +183,8 @@ def main():
                 '<div><template shadowrootmode="open"><a href="/evil-shadow">shadow</a></template></div>',
                 '<map name="m"><area href="/evil-area" shape="rect" coords="0,0,9,9"></map>',
                 '<a href="https://example.org/ok" style="color:red" onclick="x()">kept</a>',
+                '<img name="getElementById" src="x.png">',
+                '<video src="https://example.com/demo.mp4" controls width="600"></video>',
             ]) + "\n"
             restyle(chrome, "source", hostile, "input")
             time.sleep(1.5)
@@ -198,6 +200,22 @@ def main():
                     failures.append(f"the preview kept {marker}")
             if 'href="https://example.org/ok"' not in body:
                 failures.append("a safe link was dropped")
+            if 'name="getElementById"' in body or 'name="user-content-getElementById"' not in body:
+                failures.append("a README name can shadow the frame's own")
+            if "<video" not in body:
+                failures.append("a video was dropped, which GitHub keeps")
+            # Pasting part of a README keeps the example's files; pasting over all of it does not.
+            restyle(chrome, "example", "0", "change")
+            paste = """((all) => {
+              const t = document.getElementById("source");
+              if (all) t.select(); else t.setSelectionRange(t.value.length, t.value.length);
+              t.dispatchEvent(new ClipboardEvent("paste"));
+              return new Promise((resolve) => setTimeout(() => resolve(document.getElementById("project").textContent), 50));
+            })"""
+            if "example" not in chrome.eval(f"{paste}(false)"):
+                failures.append("pasting part of a README dropped the example's files")
+            if "your README" not in chrome.eval(f"{paste}(true)"):
+                failures.append("pasting over the whole README kept the example's files")
             for exception in chrome.exceptions():
                 failures.append(f"uncaught exception: {json.dumps(exception)[:300]}")
             if failures:

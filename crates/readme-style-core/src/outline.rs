@@ -8,8 +8,12 @@ use std::sync::LazyLock;
 use regex::Regex;
 
 use crate::document::{Block, BlockKind, Document};
+use crate::html::closes;
 use crate::theme::whole_title;
 use crate::urls;
+
+/// Elements that wrap whatever comes before their end tag.
+const WRAPPERS: &[&str] = &["div", "details", "table", "section", "center"];
 
 static TOC_TITLE: LazyLock<Regex> =
     LazyLock::new(|| whole_title("table of contents|contents|toc").expect("valid regex"));
@@ -110,8 +114,13 @@ fn is_hero_html(block: &Block, centered: bool) -> bool {
     if block.kind != BlockKind::Html {
         return false;
     }
+    // HTML that leaves a wrapper open (`<details open>` before a list) wraps what follows, and
+    // a folded section, a table or a list is body content: none of them is a hero.
     let source = block.literal.to_ascii_lowercase();
-    if source.matches("<div").count() != source.matches("</div").count()
+    if !closes(&source, WRAPPERS)
+        || ["<details", "<table", "<ul", "<ol"]
+            .iter()
+            .any(|tag| source.contains(tag))
         || block.text.trim().chars().count() > HERO_HTML_MAX_CHARS
     {
         return false;
@@ -336,7 +345,10 @@ fn find_tagline(intro: &[(usize, &Block)]) -> Option<usize> {
         let text = block.text.trim();
         let lines = match block.kind {
             BlockKind::Paragraph => block.end - block.start,
-            BlockKind::Html if block.images.is_empty() => text.lines().count(),
+            // HTML that leaves an element open wraps what follows; it is no tagline.
+            BlockKind::Html if block.images.is_empty() && closes(&block.literal, WRAPPERS) => {
+                text.lines().count()
+            }
             _ => return None,
         };
         let short = !text.is_empty() && text.chars().count() <= TAGLINE_MAX_CHARS && lines <= 2;
@@ -350,6 +362,8 @@ fn has_user_toc(doc: &Document, user: &[(usize, &Block)]) -> bool {
         return true;
     }
     user.iter().any(|(_, block)| match block.kind {
+        // `<details><summary>Table of Contents</summary>` around the list.
+        BlockKind::Html => is_toc_title(block.text.trim()),
         BlockKind::Paragraph => {
             matches!(
                 block.text.trim().to_ascii_lowercase().as_str(),
