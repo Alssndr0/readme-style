@@ -4,6 +4,8 @@
 
 Official implementation of **SparseFlow** (NeurIPS 2026).
 
+[Paper](https://arxiv.org/abs/2605.01234) | [Project Page](https://acme-lab.github.io/sparseflow) | [Models](https://huggingface.co/acme-lab/sparseflow-xl) | [Demo](https://huggingface.co/spaces/acme-lab/sparseflow) | [Colab](https://colab.research.google.com/github/acme-lab/sparseflow/blob/main/demo.ipynb)
+
 <!-- readme-style:header theme=ml-research -->
 [![arXiv 2605.01234](https://img.shields.io/badge/arXiv-2605.01234-B31B1B?logo=arxiv&logoColor=white&style=flat)](https://arxiv.org/abs/2605.01234) [![Project page](https://img.shields.io/badge/Project_Page-2F80ED?style=flat)](https://acme-lab.github.io/sparseflow) [![Hugging Face models](https://img.shields.io/badge/Hugging_Face-Models-FFD21E?logo=huggingface&logoColor=000&style=flat)](https://huggingface.co/acme-lab/sparseflow-xl) [![Hugging Face demo](https://img.shields.io/badge/Hugging_Face-Demo-FFD21E?logo=huggingface&logoColor=000&style=flat)](https://huggingface.co/spaces/acme-lab/sparseflow) [![Open in Colab](https://img.shields.io/badge/Open_in-Colab-F9AB00?logo=googlecolab&logoColor=white&style=flat)](https://colab.research.google.com/github/acme-lab/sparseflow/blob/main/demo.ipynb) ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white&style=flat) [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat)](LICENSE)
 
@@ -11,8 +13,6 @@ Official implementation of **SparseFlow** (NeurIPS 2026).
 <!-- /readme-style:header -->
 
 </div><!-- /readme-style:center -->
-
-[Paper](https://arxiv.org/abs/2605.01234) | [Project Page](https://acme-lab.github.io/sparseflow) | [Models](https://huggingface.co/acme-lab/sparseflow-xl) | [Demo](https://huggingface.co/spaces/acme-lab/sparseflow) | [Colab](https://colab.research.google.com/github/acme-lab/sparseflow/blob/main/demo.ipynb)
 
 SparseFlow learns which attention blocks a diffusion transformer can skip at each
 denoising step, cutting sampling cost by 2.4x with no loss in FID.

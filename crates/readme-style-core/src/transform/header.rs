@@ -26,8 +26,8 @@ static WORD: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\w+").expect("valid
 const NAV_LABEL_MAX_CHARS: usize = 30;
 /// A tagline should read in one glance.
 const TAGLINE_MAX_CHARS: usize = 160;
-/// How many opening words of a description count as "the README already says this".
-const TAGLINE_ECHO_WORDS: usize = 6;
+/// How many consecutive words of a description, found in the README, mean it says it already.
+const TAGLINE_ECHO_WORDS: usize = 4;
 
 fn words(text: &str) -> String {
     WORD.find_iter(&text.to_lowercase())
@@ -36,21 +36,22 @@ fn words(text: &str) -> String {
         .join(" ")
 }
 
-/// The package description as a tagline, if it is short and the README does not say it already.
+/// The package description as a tagline, if it is short and the README does not say it already:
+/// any run of four of its words in the README counts as saying it.
 fn metadata_tagline(doc: &Document, description: Option<&str>) -> Option<String> {
     let description = description?.trim();
     if description.is_empty() || description.chars().count() > TAGLINE_MAX_CHARS {
         return None;
     }
-    let opening: Vec<String> = words(description)
-        .split(' ')
-        .take(TAGLINE_ECHO_WORDS)
-        .map(str::to_owned)
-        .collect();
-    if words(&doc.outline().user_text).contains(&opening.join(" ")) {
-        return None;
-    }
-    Some(crate::markdown::escape_text(description))
+    let said = format!(" {} ", words(&doc.outline().user_text));
+    let ours: Vec<String> = words(description).split(' ').map(str::to_owned).collect();
+    let echoed = if ours.len() < TAGLINE_ECHO_WORDS {
+        said.contains(&format!(" {} ", ours.join(" ")))
+    } else {
+        ours.windows(TAGLINE_ECHO_WORDS)
+            .any(|run| said.contains(&format!(" {} ", run.join(" "))))
+    };
+    (!echoed).then(|| crate::markdown::escape_text(description))
 }
 
 fn nav_item(style: NavStyle, text: &str, target: &str) -> String {

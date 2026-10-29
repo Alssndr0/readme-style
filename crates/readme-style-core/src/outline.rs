@@ -89,6 +89,21 @@ pub(crate) fn is_badge_row(block: &Block) -> bool {
     is_media(block) && !block.images.is_empty() && block.images.iter().all(|i| urls::is_badge(&i.src))
 }
 
+/// A paragraph of links and badges only (a language switcher, a row of shields), where any text
+/// outside the links is separators such as `|`, `·` or `•`.
+pub(crate) fn is_link_row(block: &Block) -> bool {
+    if block.kind != BlockKind::Paragraph || (block.links.is_empty() && block.images.is_empty()) {
+        return false;
+    }
+    let mut rest = block.text.clone();
+    for link in &block.links {
+        if let Some(at) = rest.find(&link.text) {
+            rest.replace_range(at..at + link.text.len(), "");
+        }
+    }
+    !rest.chars().any(char::is_alphanumeric)
+}
+
 /// A short, self-contained HTML block, such as a centered subtitle or a row of links.
 fn is_hero_html(block: &Block, centered: bool) -> bool {
     if block.kind != BlockKind::Html {
@@ -164,7 +179,7 @@ impl Outline {
                 continue;
             }
             let fits = if title.is_some() {
-                is_tagline(index) || is_badge_row(block) || is_hero_html(block, true)
+                is_tagline(index) || is_badge_row(block) || is_link_row(block) || is_hero_html(block, true)
             } else {
                 is_tagline(index) || is_media(block) || is_hero_html(block, false)
             };
@@ -417,6 +432,14 @@ mod tests {
             (outline.hero_start, outline.hero_end, outline.lead_end),
             (2, 5, 3)
         );
+    }
+
+    #[test]
+    fn badges_and_language_links_belong_to_the_hero() {
+        let doc = Document::parse(
+            "# fd\n\n[![CI](https://img.shields.io/badge/a-b-c)](x)\n[中文](a.md) | [한국어](b.md)\n\nfd finds files.\nIt is fast and has many options that make it pleasant.\n\n## A\n",
+        );
+        assert_eq!(doc.outline().hero_end, 4);
     }
 
     #[test]

@@ -9,6 +9,8 @@
 //!   current.
 //! * `screenshot <README> <PNG> [--height N]`: render through GitHub's Markdown API and
 //!   screenshot with headless Chrome (needs `gh` and Chrome or Chromium).
+//! * `gallery REPO:THEME...`: before and after screenshots of corpus READMEs, side by side in
+//!   `target/gallery/index.html` (run `corpus fetch` first).
 
 use std::fmt::Write as _;
 use std::fs;
@@ -56,6 +58,7 @@ fn main() -> ExitCode {
         ["examples", rest @ ..] => examples(rest),
         ["screenshot", readme, png, rest @ ..] => screenshot(Path::new(readme), Path::new(png), rest),
         ["debug", readme, themes @ ..] if !themes.is_empty() => debug(Path::new(readme), themes),
+        ["gallery", pairs @ ..] if !pairs.is_empty() => gallery(pairs),
         _ => {
             eprintln!(
                 "usage: cargo xtask (corpus fetch|corpus run|examples [--check]|screenshot README PNG)"
@@ -393,6 +396,49 @@ fn debug(readme: &Path, names: &[&str]) -> Result<bool> {
         path.display()
     );
     Ok(false)
+}
+
+// gallery
+
+/// Before and after screenshots of corpus READMEs (`owner__name:theme`), side by side in one page.
+/// The styled copy is written next to the original so relative images resolve.
+#[allow(clippy::print_stdout)]
+fn gallery(pairs: &[&str]) -> Result<bool> {
+    let out = root().join("target/gallery");
+    fs::create_dir_all(&out)?;
+    let themes = Themes::builtin();
+    let mut rows = String::new();
+    for pair in pairs {
+        let (repo, theme_name) = pair.split_once(':').context("expected owner__name:theme")?;
+        let dir = root().join("target/corpus").join(repo);
+        let readme =
+            fs::canonicalize(find_readme(&dir).with_context(|| format!("no README in {}", dir.display()))?)?;
+        let text = fs::read_to_string(&readme)?;
+        let facts = inspect(&OsFs, &readme, &Overrides::default());
+        let styled = style(&text, &themes.get(theme_name)?, &facts)?.output;
+        let copy = readme.with_file_name(format!(".gallery-{theme_name}.md"));
+        fs::write(&copy, styled)?;
+        let before = out.join(format!("{repo}-before.png"));
+        let after = out.join(format!("{repo}-{theme_name}.png"));
+        screenshot(&readme, &before, &["--height", "1100"])?;
+        screenshot(&copy, &after, &["--height", "1100"])?;
+        let _ = fs::remove_file(&copy);
+        let name = repo.replace("__", "/");
+        let _ = writeln!(
+            rows,
+            "<h2>{name} <small>{theme_name}</small></h2><div class=row><figure><img src=\"{repo}-before.png\"><figcaption>before</figcaption></figure>\
+             <figure><img src=\"{repo}-{theme_name}.png\"><figcaption>after</figcaption></figure></div>"
+        );
+    }
+    let page = format!(
+        "<!doctype html><meta charset=utf-8><title>readme-style gallery</title><style>body{{font-family:system-ui;margin:24px;background:#f6f8fa}}\
+         .row{{display:flex;gap:16px}}figure{{margin:0;flex:1;background:#fff;border:1px solid #d0d7de}}img{{width:100%}}\
+         figcaption{{text-align:center;padding:6px;color:#57606a}}</style><h1>readme-style: before and after</h1>{rows}"
+    );
+    let index = out.join("index.html");
+    fs::write(&index, page)?;
+    println!("{}", index.display());
+    Ok(true)
 }
 
 // screenshot

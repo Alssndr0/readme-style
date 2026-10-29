@@ -4,6 +4,8 @@
 
 Official implementation of **SparseFlow** (NeurIPS 2026).
 
+[Paper](https://arxiv.org/abs/2605.01234) | [Project Page](https://acme-lab.github.io/sparseflow) | [Models](https://huggingface.co/acme-lab/sparseflow-xl) | [Demo](https://huggingface.co/spaces/acme-lab/sparseflow) | [Colab](https://colab.research.google.com/github/acme-lab/sparseflow/blob/main/demo.ipynb)
+
 <!-- readme-style:header theme=startup -->
 [![Tests](https://img.shields.io/github/actions/workflow/status/acme-lab/sparseflow/tests.yml?label=Tests&logo=github&style=for-the-badge)](https://github.com/acme-lab/sparseflow/actions/workflows/tests.yml) [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue?style=for-the-badge)](LICENSE)
 
@@ -13,8 +15,6 @@ Official implementation of **SparseFlow** (NeurIPS 2026).
 <!-- /readme-style:header -->
 
 </div><!-- /readme-style:center -->
-
-[Paper](https://arxiv.org/abs/2605.01234) | [Project Page](https://acme-lab.github.io/sparseflow) | [Models](https://huggingface.co/acme-lab/sparseflow-xl) | [Demo](https://huggingface.co/spaces/acme-lab/sparseflow) | [Colab](https://colab.research.google.com/github/acme-lab/sparseflow/blob/main/demo.ipynb)
 
 SparseFlow learns which attention blocks a diffusion transformer can skip at each
 denoising step, cutting sampling cost by 2.4x with no loss in FID.
