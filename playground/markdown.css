@@ -35,6 +35,9 @@
 
 html {
   background: var(--bg);
+  /* Each preview restores the reader's position as a plain offset: with anchoring on, images
+     loading above it would move it further down on every update. */
+  overflow-anchor: none;
 }
 
 body {

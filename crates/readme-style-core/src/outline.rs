@@ -121,18 +121,47 @@ fn is_body_html(block: &Block) -> bool {
 
 /// A block that opens a wrapper which does not center: what follows it, up to its end tag, is
 /// laid out as the README's author chose, and is no part of a centered hero.
-pub(crate) fn opens_uncentered(block: &Block) -> bool {
-    wrapper_change(block) > 0
-        && tokenize(&block.literal).iter().any(|tag| match tag {
-            // The wrapper's own tag decides, not a centered `<p>` inside it.
-            Tag::Start { name, .. } if WRAPPERS.contains(&name.as_str()) => {
-                name != "center"
-                    && !tag
-                        .attr("align")
-                        .is_some_and(|a| a.trim().eq_ignore_ascii_case("center"))
+/// The alignment of each wrapper a block leaves open, from its own tag (`None` when it sets
+/// none): a centered `<p>`, or a `<div>` opened and closed inside the block, does not count.
+fn open_wrappers(block: &Block) -> Vec<Option<String>> {
+    let mut open: Vec<(String, Option<String>)> = Vec::new();
+    for tag in tokenize(&block.literal) {
+        match &tag {
+            Tag::Start {
+                name,
+                self_closing: false,
+                ..
+            } if WRAPPERS.contains(&name.as_str()) => {
+                let align = if name == "center" {
+                    Some("center".to_owned())
+                } else {
+                    tag.attr("align").map(|a| a.trim().to_ascii_lowercase())
+                };
+                open.push((name.clone(), align));
             }
-            _ => false,
-        })
+            Tag::End(name) if WRAPPERS.contains(&name.as_str()) => {
+                if let Some(i) = open.iter().rposition(|(n, _)| n == name) {
+                    open.truncate(i);
+                }
+            }
+            _ => {}
+        }
+    }
+    open.into_iter().map(|(_, align)| align).collect()
+}
+
+/// A block that leaves open a wrapper which does not center what it holds.
+pub(crate) fn opens_uncentered(block: &Block) -> bool {
+    open_wrappers(block)
+        .iter()
+        .any(|a| a.as_deref() != Some("center"))
+}
+
+/// A block that leaves open a wrapper aligning its content to another side (`align="right"`).
+fn aligns_elsewhere(block: &Block) -> bool {
+    open_wrappers(block)
+        .iter()
+        .any(|a| a.as_deref().is_some_and(|a| a != "center"))
 }
 
 /// The wrappers a hero has opened and not closed. One that does not center may open in the hero
@@ -295,20 +324,38 @@ impl Outline {
 
         let hero_start = match &title {
             Some(title) => {
+                // Upwards from the title. A wrapper closed above it joins the hero whole, when
+                // everything in it fits and it does not align its content to another side; a
+                // wrapper still open around the title must center, or it holds body text too.
                 let mut start = title.start;
+                let mut depth = 0;
                 for (_, block) in user.iter().rev().filter(|(_, b)| b.start < title.start) {
                     if is_comment(block) {
                         continue;
                     }
-                    // Not past the end of an earlier wrapper, nor the start of one that does not
-                    // center: it holds the title along with whatever body text follows.
-                    if !(is_media(block) || is_hero_html(block, false))
-                        || wrapper_change(block) < 0
-                        || opens_uncentered(block)
-                    {
+                    let change = wrapper_change(block);
+                    let bare = block.text.trim().is_empty() && block.images.is_empty();
+                    if change < 0 && bare {
+                        depth -= change;
+                        continue;
+                    }
+                    if !(is_media(block) || is_hero_html(block, false)) {
                         break;
                     }
-                    start = block.start;
+                    if depth == 0 {
+                        if opens_uncentered(block) {
+                            break;
+                        }
+                        start = block.start;
+                    } else if change > 0 {
+                        if aligns_elsewhere(block) {
+                            break;
+                        }
+                        depth = (depth - change).max(0);
+                        if depth == 0 {
+                            start = block.start;
+                        }
+                    }
                 }
                 start
             }

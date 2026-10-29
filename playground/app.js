@@ -34,7 +34,7 @@ const state = {
   shown: null,
   /** The token of the document in the preview frame; its messages carry it. */
   frameToken: null,
-  /** A frame still loading the next preview, and its token. */
+  /** A frame still loading the next preview: `{frame, token, tab, ready, timer}`. */
   pending: null,
 };
 
@@ -166,17 +166,24 @@ async function showPreview() {
     scroll: state.scroll[state.tab],
   });
   if (state.shown !== key) return;
-  show(page, token);
+  show(page, token, state.tab);
 }
 
+/** How long a parsed preview may wait for its images before it is shown anyway. */
+const IMAGE_WAIT_MS = 400;
+
 /**
- * Load a document in a new frame, out of sight, and swap it in as soon as its document is
- * parsed (its script says so; images may still be loading). A frame of its own each time has no
- * history, so the mouse's Back button cannot take it to an earlier document, and the old preview
- * stays on screen until the new one is ready.
+ * Load a document in a new frame, out of sight, and swap it in once it has loaded, images
+ * included, or shortly after its document is parsed (its script says so) if images are slow: a
+ * badge host that never answers must not hold the preview back. A frame of its own each time has
+ * no history, so the mouse's Back button cannot take it to an earlier document, and the old
+ * preview stays on screen until the new one is ready. `tab` is the tab it was built for.
  */
-function show(page, token) {
-  state.pending?.frame.remove();
+function show(page, token, tab) {
+  if (state.pending) {
+    clearTimeout(state.pending.timer);
+    state.pending.frame.remove();
+  }
   const frame = ui.frame.cloneNode(false);
   frame.removeAttribute("srcdoc");
   frame.removeAttribute("id");
@@ -184,22 +191,22 @@ function show(page, token) {
   frame.style.colorScheme = ui.scheme.value;
   frame.addEventListener("load", onFrameLoad);
   frame.srcdoc = page;
-  state.pending = { frame, token };
+  state.pending = { frame, token, tab, ready: false, timer: null };
   ui.frame.after(frame);
   // A notice has no script to say it is ready.
   if (token === null) swapIn();
 }
 
 function swapIn() {
-  const { frame, token } = state.pending;
+  const { frame, token, tab, timer } = state.pending;
+  clearTimeout(timer);
   state.pending = null;
-  frame.dataset.loads = "0";
   frame.classList.remove("loading");
   ui.frame.remove();
   frame.id = "preview";
   ui.frame = frame;
   state.frameToken = token;
-  frame.contentWindow?.postMessage({ readmeStyle: "scroll", token, y: state.scroll[state.tab] ?? 0 }, "*");
+  frame.contentWindow?.postMessage({ readmeStyle: "scroll", token, y: state.scroll[tab] ?? 0 }, "*");
 }
 
 // Once a frame has said it is ready (loads before that are its initial blank document), its
@@ -210,24 +217,45 @@ function onFrameLoad(event) {
   if (frame.dataset.loads === undefined) return;
   const loads = Number(frame.dataset.loads) + 1;
   frame.dataset.loads = String(loads);
-  if (loads === 1) return;
-  if (frame === ui.frame && state.frameToken !== null) {
-    state.frameToken = null;
-    state.shown = null;
-    // A newer preview on its way replaces it anyway.
-    if (!state.pending) show(STOPPED, null);
+  if (loads === 1) {
+    if (frame === state.pending?.frame) swapIn();
+    return;
   }
+  if (frame === state.pending?.frame) {
+    clearTimeout(state.pending.timer);
+    frame.remove();
+    state.pending = null;
+  } else if (frame === ui.frame) {
+    stopped();
+  }
+}
+
+/** The visible frame was navigated away: show a notice, unless a newer preview is on its way. */
+function stopped() {
+  if (state.frameToken === null) return;
+  state.frameToken = null;
+  state.shown = null;
+  if (!state.pending) show(STOPPED, null, state.tab);
 }
 
 window.addEventListener("message", (event) => {
   if (typeof event.data !== "object" || event.data === null) return;
   const pending = state.pending;
   if (event.data.readmeStyle === "ready") {
-    if (pending && event.source === pending.frame.contentWindow && event.data.token === pending.token) swapIn();
+    const own = pending && !pending.ready && event.source === pending.frame.contentWindow;
+    if (own && event.data.token === pending.token) {
+      pending.ready = true;
+      pending.frame.dataset.loads = "0";
+      pending.timer = setTimeout(() => state.pending === pending && swapIn(), IMAGE_WAIT_MS);
+    }
     return;
   }
   if (event.source !== ui.frame.contentWindow) return;
   if (state.frameToken === null || event.data.token !== state.frameToken) return;
+  if (event.data.readmeStyle === "leaving") {
+    stopped();
+    return;
+  }
   if (event.data.readmeStyle === "scroll" && typeof event.data.y === "number") {
     if (state.tab in state.scroll) state.scroll[state.tab] = event.data.y;
   } else if (event.data.readmeStyle === "open" && typeof event.data.href === "string") {

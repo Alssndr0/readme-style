@@ -144,7 +144,11 @@ templates, and only `http`, `https`, `mailto` and relative links). It then shows
 frame's own script run, by nonce, with `base-uri` and `form-action` set to `'none'`. That script
 scrolls to anchors and passes other links to the page, tagged with a token only that document
 knows; the page ignores any other message, and replaces the frame's content if anything navigates
-it away. `playground/tests/smoke.py` checks all of this in headless Chrome.
+it away. Each preview loads in a new frame, out of sight, and replaces the visible one once its
+images are in (or 400 ms after its document is parsed, so a slow image host cannot hold it back):
+a frame of its own each time has no history to navigate back through, and the reader's scroll
+position is restored as a plain offset, with scroll anchoring off so that images loading above it
+do not push it down. `playground/tests/smoke.py` checks the security properties in headless Chrome.
 
 ## Suggestions
 

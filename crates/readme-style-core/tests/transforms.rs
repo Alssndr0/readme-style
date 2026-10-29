@@ -95,6 +95,8 @@ fn callouts_leave_other_text_alone() {
         "> **Note:**\n>\n> a separate paragraph",
         "- **Note:** inside a list",
         "> > **Note:** nested",
+        // A lead-in over a setext underline is a heading.
+        "> **Note:** a\n>=",
         // GitHub shows `[!NOTE]` as text when nothing visible follows it.
         "> **Note:**\n> <!-- TODO: link the migration guide -->",
         "> **Note:**\n> <p align=\"center\">Centered words.</p>",

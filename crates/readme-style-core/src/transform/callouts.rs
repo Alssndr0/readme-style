@@ -134,6 +134,24 @@ fn quote(doc: &Document, block: &Block, ed: &mut Editor<'_>) {
     if rest.is_empty() && ends_with_line_break(content) {
         return;
     }
+    // The lead-in must open a paragraph: `> **Note:** a` above `> ===` is a heading.
+    let inside: Vec<&str> = doc.lines[block.start..block.end]
+        .iter()
+        .map(|line| {
+            QUOTE
+                .captures(line)
+                .and_then(|c| c.get(2))
+                .map_or(line.as_str(), |m| m.as_str())
+        })
+        .collect();
+    let opening = Document::parse(&inside.join("\n"));
+    if opening
+        .blocks
+        .first()
+        .is_none_or(|b| b.kind != BlockKind::Paragraph)
+    {
+        return;
+    }
     let prefix = format!("{} ", first[1].trim_end());
     let mut lines = vec![format!("{prefix}[!{kind}]")];
     let mut end = block.start + 1;

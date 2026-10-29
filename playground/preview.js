@@ -59,6 +59,9 @@ addEventListener("DOMContentLoaded", () => {
   restore();
   tell({ readmeStyle: "ready" });
 });
+// Leaving this document (something navigated the frame) is worth knowing even when the next page
+// never finishes loading.
+addEventListener("pagehide", () => tell({ readmeStyle: "leaving" }));
 `;
 
 function nonce() {
