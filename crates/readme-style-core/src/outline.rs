@@ -60,6 +60,7 @@ pub(crate) struct Outline {
     pub(crate) has_user_badges: bool,
     pub(crate) has_hero_image: bool,
     pub(crate) has_user_toc: bool,
+    pub(crate) has_user_nav: bool,
     pub(crate) links: Vec<Link>,
     /// The README text without managed lines.
     pub(crate) user_text: String,
@@ -188,6 +189,22 @@ impl Outline {
             .take_while(|(_, b)| b.start < intro_end)
             .flat_map(|(_, b)| b.images.iter().map(|i| i.src.as_str()))
             .collect();
+        // Badges count as the README's own up to its first real section: a table of contents
+        // section often comes first, with the badge row under it.
+        let badge_zone_end = sections
+            .iter()
+            .map(|&i| &doc.headings[i])
+            .find(|h| !is_toc_title(&h.text))
+            .map_or(doc.lines.len(), |h| h.start);
+        let has_user_badges = user
+            .iter()
+            .take_while(|(_, b)| b.start < badge_zone_end)
+            .flat_map(|(_, b)| &b.images)
+            .any(|i| urls::is_badge(&i.src));
+        // A row of links to the README's own sections in the intro is a nav bar already.
+        let has_user_nav = intro_blocks_of(&user, intro_end).any(|b| {
+            b.kind != BlockKind::List && b.links.iter().filter(|l| l.href.starts_with('#')).count() >= 2
+        });
 
         let links = user
             .iter()
@@ -216,13 +233,21 @@ impl Outline {
             hero_start,
             hero_end,
             lead_end,
-            has_user_badges: top_images.iter().any(|src| urls::is_badge(src)),
+            has_user_badges,
+            has_user_nav,
             has_hero_image: top_images.iter().any(|src| !urls::is_badge(src)),
             has_user_toc: has_user_toc(doc, &user),
             links,
             user_text,
         }
     }
+}
+
+/// User blocks before `intro_end`.
+fn intro_blocks_of<'a>(user: &'a [(usize, &'a Block)], intro_end: usize) -> impl Iterator<Item = &'a Block> {
+    user.iter()
+        .map(|(_, b)| *b)
+        .take_while(move |b| b.start < intro_end)
 }
 
 /// The title: an H1, an HTML `<h1>`, or an opening heading that no other heading outranks

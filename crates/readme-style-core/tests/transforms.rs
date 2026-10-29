@@ -120,6 +120,24 @@ fn minimal_puts_badges_under_the_title() {
 }
 
 #[test]
+fn badges_under_a_table_of_contents_still_count() {
+    let readme =
+        "# T\n\n## Table of contents\n\n- [A](#a)\n\n[![x](https://img.shields.io/badge/a-b-c)](y)\n\n## A\n";
+    assert!(
+        !run_with(readme, &theme("startup"), &facts())
+            .output
+            .contains("license-MIT")
+    );
+}
+
+#[test]
+fn a_readme_with_its_own_nav_row_gets_no_second_one() {
+    let readme = "# T\n\n[Install](#install) · [Usage](#usage)\n\n## Install\n\n## Usage\n";
+    let out = run(readme, "startup");
+    assert!(!out.contains("**[Install](#install)**"), "{out}");
+}
+
+#[test]
 fn readmes_with_badges_keep_their_own() {
     let readme = "# T\n\n[![x](https://img.shields.io/badge/a-b-c)](y)\n\nPitch.\n";
     assert_eq!(run_with(readme, &theme("minimal"), &facts()).output, readme);

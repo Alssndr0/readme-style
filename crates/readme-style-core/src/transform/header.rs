@@ -168,6 +168,7 @@ pub(super) fn apply(doc: &Document, cx: &mut Context<'_>) -> Option<Vec<String>>
         content.extend([row.join(" "), String::new()]);
     }
     if theme.nav.show
+        && !outline.has_user_nav
         && let Some(nav) = nav_bar(doc, cx)
     {
         content.extend([nav, String::new()]);

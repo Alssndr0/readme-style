@@ -43,5 +43,8 @@ fn gallery_is_current() {
             assert!(!again.changed, "{} is not stable", target.display());
         }
     }
-    assert!(stale.is_empty(), "out of date, run `cargo xtask examples`: {stale:?}");
+    assert!(
+        stale.is_empty(),
+        "out of date, run `cargo xtask examples`: {stale:?}"
+    );
 }
