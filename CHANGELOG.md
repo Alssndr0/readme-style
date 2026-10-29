@@ -17,8 +17,8 @@ All notable changes are listed here. The format follows
 ### Changed
 
 - When a nav bar has more sections than room, it prefers where to start and how to use the project
-  (install, usage, configuration, API), then benchmarks, results and FAQ, then contributing and
-  license.
+  (install, usage, configuration, API), then benchmarks, results and FAQ, then the project's own
+  sections, and last contributing, license, sponsors and similar closing sections.
 
 ### Fixed
 
