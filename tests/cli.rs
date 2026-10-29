@@ -298,6 +298,38 @@ fn outside_any_repository_the_readme_stays_in_its_folder() {
         .code(1);
 }
 
+#[cfg(unix)]
+#[test]
+fn a_readme_link_leads_only_to_markdown_in_its_folder() {
+    // A downloaded archive inside a home folder kept in git.
+    let home = TempDir::new().expect("temp dir");
+    fs::create_dir_all(home.path().join(".git")).expect("home repository");
+    fs::create_dir_all(home.path().join(".ssh")).expect("folders");
+    fs::create_dir_all(home.path().join("Downloads/archive")).expect("folders");
+    fs::write(home.path().join(".ssh/id_ed25519"), "SECRET KEY MATERIAL\n").expect("key");
+    std::os::unix::fs::symlink(
+        "../../.ssh/id_ed25519",
+        home.path().join("Downloads/archive/README.md"),
+    )
+    .expect("link");
+    cli()
+        .args(["--stdout"])
+        .arg(home.path().join("Downloads/archive"))
+        .assert()
+        .code(2)
+        .stdout(predicate::str::contains("SECRET").not());
+    // A repository's README linking to the .env you created next to it.
+    let dir = project(&[(".env", "OPENAI_API_KEY=do-not-print\n")]);
+    std::os::unix::fs::symlink(".env", dir.path().join("README.md")).expect("link");
+    cli()
+        .arg("--check")
+        .arg(dir.path())
+        .assert()
+        .code(2)
+        .stdout(predicate::str::contains("do-not-print").not())
+        .stderr(predicate::str::contains("not a Markdown file"));
+}
+
 #[test]
 fn a_parent_folder_outside_the_current_repository_is_fine() {
     let parent = TempDir::new().expect("temp dir");

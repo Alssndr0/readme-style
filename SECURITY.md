@@ -15,5 +15,15 @@ the README, the project metadata and (for diagrams) a two-level file listing to 
 configured, over HTTPS unless you point it at a plain-HTTP local server. API keys are read from the
 environment, never from configuration files, and never printed.
 
+A repository you clone is not trusted with your files. readme-style follows symbolic links only
+where they cannot point it at a file it should not read, print in a diff, send to a model or rewrite:
+a README that is a link must lead to a Markdown file in its own folder or below, and a folder link
+must stay inside the repository it sits in. Nothing inside a `.git` folder is ever read through a
+link.
+
+The browser playground runs the same engine in the page. Project files you open are read there and
+never uploaded. The preview shows the README's HTML reduced to what GitHub keeps, in a sandboxed
+frame whose content security policy runs no script but the preview's own.
+
 Reports about content readme-style writes into a README, such as HTML or links that could mislead a
 reader, are in scope too.

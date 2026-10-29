@@ -4,7 +4,7 @@ use super::{Context, delete_lines, names};
 use crate::document::{Block, Document};
 use crate::edit::Editor;
 use crate::markers::wrapper_line;
-use crate::outline::wrapper_change;
+use crate::outline::{CENTERED, wrapper_change};
 use crate::theme::Align;
 
 /// Remove every wrapper line, so later steps see the README as the user wrote it.
@@ -16,14 +16,17 @@ pub(super) fn strip(doc: &Document, _: &mut Context<'_>) -> Option<Vec<String>> 
     ed.apply()
 }
 
-/// Adjust `start..end` so it nests with the README's own wrappers: a `<div>` closed inside it
-/// was opened inside it (the span starts earlier), and one opened inside it closes inside it (the
-/// span ends later, by `limit`). When a `<div>` opened inside never closes in time, the span
-/// ends before it instead. `None` when nothing is left to wrap.
+/// Adjust `start..end` so it nests with the README's own wrappers.
+///
+/// - A wrapper closed inside the span but opened before it: the span starts at the opening when
+///   that wrapper centers anyway, and otherwise ends before the closing.
+/// - A wrapper opened inside the span: the span ends where it closes, by `limit`. When it does
+///   not close in time, the span shrinks to the longest part where everything opened is closed.
+///
+/// `None` when nothing is left to wrap.
 fn nest(doc: &Document, mut start: usize, mut end: usize, limit: usize) -> Option<(usize, usize)> {
     let user: Vec<&Block> = doc.blocks.iter().filter(|b| !b.managed).collect();
     let within = |b: &Block, from: usize, to: usize| b.start >= from && b.start < to;
-    // Closed inside but opened before: start at the opening.
     'start: loop {
         let mut depth = 0;
         for block in user.iter().filter(|b| within(b, start, end)) {
@@ -32,14 +35,17 @@ fn nest(doc: &Document, mut start: usize, mut end: usize, limit: usize) -> Optio
                 let opener = user
                     .iter()
                     .rev()
-                    .find(|b| b.start < start && wrapper_change(b) > 0)?;
-                start = opener.start;
+                    .find(|b| b.start < start && wrapper_change(b) > 0)
+                    .filter(|b| CENTERED.is_match(&b.literal.to_ascii_lowercase()));
+                match opener {
+                    Some(opener) => start = opener.start,
+                    None => end = block.start,
+                }
                 continue 'start;
             }
         }
         break;
     }
-    // Opened inside: end where it closes.
     let mut depth: i32 = user
         .iter()
         .filter(|b| within(b, start, end))
@@ -53,21 +59,18 @@ fn nest(doc: &Document, mut start: usize, mut end: usize, limit: usize) -> Optio
         depth += wrapper_change(block);
         end = block.end;
     }
-    if depth == 0 {
-        return Some((start, end));
-    }
-    // It never closes in time: end at the last point where everything opened is closed, which
-    // keeps generated content placed before the opening.
-    let mut depth = 0;
-    let mut balanced = None;
-    for block in doc.blocks.iter().filter(|b| within(b, start, end)) {
-        depth += if block.managed { 0 } else { wrapper_change(block) };
-        if depth > 0 {
-            break;
+    if depth != 0 {
+        let mut depth = 0;
+        let mut balanced = start;
+        for block in doc.blocks.iter().filter(|b| within(b, start, end)) {
+            depth += if block.managed { 0 } else { wrapper_change(block) };
+            if depth == 0 {
+                balanced = block.end;
+            }
         }
-        balanced = Some(block.end);
+        end = balanced;
     }
-    balanced.map(|end| (start, end))
+    (end > start).then_some((start, end))
 }
 
 /// Center the hero (logo, title, tagline, header) in a div that Markdown still renders in.

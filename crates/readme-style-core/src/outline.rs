@@ -17,7 +17,7 @@ const WRAPPERS: &[&str] = &["div", "details", "table", "section", "center"];
 
 static TOC_TITLE: LazyLock<Regex> =
     LazyLock::new(|| whole_title("table of contents|contents|toc").expect("valid regex"));
-static CENTERED: LazyLock<Regex> =
+pub(crate) static CENTERED: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"(?i)align\s*=\s*["']?center|<center"#).expect("valid regex"));
 
 /// The longest text that still reads as a one-line pitch.
@@ -113,10 +113,16 @@ pub(crate) fn is_link_row(block: &Block) -> bool {
 fn is_body_html(block: &Block) -> bool {
     block.kind == BlockKind::Html && {
         let source = block.literal.to_ascii_lowercase();
-        ["<details", "<table", "<ul", "<ol"]
-            .iter()
-            .any(|tag| source.contains(tag))
+        ["<details", "<ul", "<ol"].iter().any(|tag| source.contains(tag))
+            // A table of logos is media; one with text is content.
+            || (source.contains("<table") && !block.text.trim().is_empty())
     }
+}
+
+/// A block that opens a wrapper which does not center: what follows it, up to its end tag, is
+/// laid out as the README's author chose, and is no part of a centered hero.
+fn opens_uncentered(block: &Block) -> bool {
+    wrapper_change(block) > 0 && !CENTERED.is_match(&block.literal.to_ascii_lowercase())
 }
 
 /// How many wrappers (`<div>`, `<details>` and the like) a block opens, or closes if negative.
@@ -210,7 +216,7 @@ impl Outline {
             } else {
                 is_tagline(index) || is_media(block) || is_hero_html(block, false)
             };
-            if !fits {
+            if !fits || opens_uncentered(block) {
                 break;
             }
             hero_end = block.end;
@@ -222,7 +228,7 @@ impl Outline {
             if is_comment(block) {
                 continue;
             }
-            if !(is_media(block) || is_hero_html(block, false)) {
+            if !(is_media(block) || is_hero_html(block, false)) || opens_uncentered(block) {
                 break;
             }
             lead_end = block.end;

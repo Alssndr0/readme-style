@@ -254,6 +254,43 @@ fn the_hero_stops_at_folded_sections_and_the_wrapper_nests() {
 }
 
 #[test]
+fn the_centered_hero_respects_the_readmes_own_layout() {
+    let sections = "\n\n## Install\n\nRun it.\n\n## Usage\n\nUse it.\n";
+    // A div that does not center holds body text: the header stays above it, and the wrapper
+    // closes before it.
+    for opening in ["<div markdown=\"1\">", "<div align=\"justify\">"] {
+        let readme = format!(
+            "# Project\n\n{opening}\nA tool that does things.\n\nA long introduction that is body text, not a tagline at all.\n</div>{sections}"
+        );
+        let out = run(&readme, "startup");
+        let wrapper_close = out.find("<!-- /readme-style:center -->").expect("a wrapper");
+        assert!(
+            wrapper_close < out.find(opening).expect("the div"),
+            "{opening}:\n{out}"
+        );
+    }
+    // A table holding only logos is part of the hero.
+    let logos = format!(
+        "<table><tr><td><img src=\"a.png\"></td><td><img src=\"b.png\"></td></tr></table>\n\nA tool for things.{sections}"
+    );
+    let out = run(&logos, "startup");
+    assert!(
+        out.starts_with("<div align=\"center\"><!-- readme-style:center -->"),
+        "{out}"
+    );
+    // A stray closing tag in the hero: the wrapper never spans it.
+    let stray = format!(
+        "# Project\n\n<p align=\"center\"><img src=\"https://img.shields.io/badge/a-b-green\"></p>\n</div>\n\nA tool.{sections}"
+    );
+    let out = run(&stray, "startup");
+    let wrapper_close = out.find("<!-- /readme-style:center -->").expect("a wrapper");
+    assert!(
+        wrapper_close < out.find("</div>\n").expect("the stray tag"),
+        "{out}"
+    );
+}
+
+#[test]
 fn headings_without_text_get_no_entry() {
     let readme =
         "# T\n\n## ![Demo](demo.gif)\n\n## <img src=\"logo.png\" alt=\"Logo\">\n\n## A\n\n## B\n\n## C\n";

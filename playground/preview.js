@@ -55,13 +55,16 @@ function isRelative(url) {
   return url && !/^([a-z][a-z0-9+.-]*:|\/\/|#)/i.test(url.trim());
 }
 
-/** A path inside the project for a relative URL, as GitHub resolves it from the README. */
-export function projectPath(url) {
+/**
+ * A path inside the project for a relative URL, as GitHub resolves it from the README: decoded,
+ * to find a file, or still encoded, to build another URL (`a%23b.md` names `a#b.md`).
+ */
+export function projectPath(url, { decoded = true } = {}) {
   const parts = [];
   for (const part of url.trim().split(/[?#]/)[0].split("/")) {
     if (part === "" || part === ".") continue;
     if (part === "..") parts.pop();
-    else parts.push(decode(part));
+    else parts.push(decoded ? decode(part) : part);
   }
   return parts.join("/");
 }
@@ -154,7 +157,7 @@ export function linkTarget(href, repo) {
   if (/^https?:\/\//i.test(href)) return href;
   if (isRelative(href) && repo) {
     const suffix = href.match(/[?#].*$/)?.[0] ?? "";
-    return `https://github.com/${repo}/blob/HEAD/${projectPath(href)}${suffix}`;
+    return `https://github.com/${repo}/blob/HEAD/${projectPath(href, { decoded: false })}${suffix}`;
   }
   return null;
 }

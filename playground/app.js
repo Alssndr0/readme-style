@@ -22,7 +22,6 @@ const ui = {
   copy: $("copy"),
   download: $("download"),
   tabs: [...document.querySelectorAll('[role="tab"]')],
-  views: [...document.querySelectorAll("[data-view]")],
 };
 
 const state = {
@@ -35,8 +34,8 @@ const state = {
   shown: null,
   /** The token of the document in the preview frame; its messages carry it. */
   frameToken: null,
-  /** Whether the frame's next load is one the page started. */
-  expectLoad: false,
+  /** A frame still loading the next preview, and its token. */
+  pending: null,
 };
 
 const STOPPED = `<!doctype html><meta http-equiv="Content-Security-Policy" content="default-src 'none'">
@@ -167,22 +166,43 @@ async function showPreview() {
     scroll: state.scroll[state.tab],
   });
   if (state.shown !== key) return;
-  state.frameToken = token;
-  state.expectLoad = true;
-  ui.frame.srcdoc = page;
+  show(page, token);
 }
 
-// A load the page did not start means something in the frame navigated it away.
-ui.frame.addEventListener("load", () => {
-  if (state.expectLoad || state.frameToken === null) {
-    state.expectLoad = false;
+/**
+ * Load a document in a new frame, out of sight, and swap it in once loaded. A frame of its own
+ * each time has no history, so the mouse's Back button cannot take it to an earlier document,
+ * and the old preview stays on screen until the new one is ready.
+ */
+function show(page, token) {
+  state.pending?.frame.remove();
+  const frame = ui.frame.cloneNode(false);
+  frame.removeAttribute("srcdoc");
+  frame.removeAttribute("id");
+  frame.classList.add("loading");
+  frame.addEventListener("load", onFrameLoad);
+  frame.srcdoc = page;
+  state.pending = { frame, token };
+  ui.frame.after(frame);
+}
+
+function onFrameLoad(event) {
+  const frame = event.target;
+  if (state.pending?.frame === frame) {
+    state.frameToken = state.pending.token;
+    state.pending = null;
+    frame.classList.remove("loading");
+    ui.frame.remove();
+    frame.id = "preview";
+    ui.frame = frame;
     return;
   }
+  // Any later load means something in the frame navigated it away.
+  if (frame !== ui.frame || state.frameToken === null) return;
   state.frameToken = null;
   state.shown = null;
-  state.expectLoad = true;
-  ui.frame.srcdoc = STOPPED;
-});
+  show(STOPPED, null);
+}
 
 window.addEventListener("message", (event) => {
   if (event.source !== ui.frame.contentWindow || typeof event.data !== "object" || event.data === null) return;
@@ -198,7 +218,9 @@ window.addEventListener("message", (event) => {
 function selectTab(tab) {
   state.tab = tab;
   for (const button of ui.tabs) button.setAttribute("aria-selected", String(button.dataset.tab === tab));
-  for (const view of ui.views) view.hidden = !view.dataset.view.split(" ").includes(tab);
+  for (const view of document.querySelectorAll("[data-view]")) {
+    view.hidden = !view.dataset.view.split(" ").includes(tab);
+  }
   showPreview();
 }
 

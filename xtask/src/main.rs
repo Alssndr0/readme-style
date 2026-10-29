@@ -239,16 +239,19 @@ fn corpus_run(args: &[&str]) -> Result<bool> {
                 Ok(Ok(output)) => output,
                 Ok(Err(StyleError::Guard(violation))) => {
                     tally.refused.push(format!("{name}: {violation}"));
+                    let _ = fs::remove_file(out.join(&name).join(format!("{}.md", theme.name)));
                     outputs.push(None);
                     continue;
                 }
                 Ok(Err(error)) => {
                     tally.unstable.push(format!("{name}: {error}"));
+                    let _ = fs::remove_file(out.join(&name).join(format!("{}.md", theme.name)));
                     outputs.push(None);
                     continue;
                 }
                 Err(message) => {
                     tally.panicked.push(format!("{name}: {message}"));
+                    let _ = fs::remove_file(out.join(&name).join(format!("{}.md", theme.name)));
                     outputs.push(None);
                     continue;
                 }

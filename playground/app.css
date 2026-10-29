@@ -247,6 +247,13 @@ iframe {
   background: var(--bg);
 }
 
+/* The next preview, laid out (so it can scroll into place) but not yet shown. */
+.views > iframe.loading {
+  position: absolute;
+  inset: 0;
+  visibility: hidden;
+}
+
 .code {
   margin: 0;
   padding: 12px;
