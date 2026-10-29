@@ -19,12 +19,13 @@ cargo run -- --help             # the CLI from source
 
 | Command | What it runs |
 |---------|--------------|
-| `cargo test --workspace` | Unit, transform, guarantee (300 generated READMEs), gallery and CLI tests. |
+| `cargo test --workspace` | Unit, transform, guarantee (300 generated READMEs), gallery, CLI and `suggest` (mock server) tests. |
 | `PROPTEST_CASES=10000 cargo test --release -p readme-style-core --test guarantees` | The property tests at CI strength. |
 | `cargo xtask examples` | Regenerates `examples/*/README.<theme>.md`; review the diff before committing. |
 | `cargo xtask corpus fetch` then `cargo xtask corpus run` | Every theme on about 140 popular READMEs, cloned into `target/corpus`. |
 | `cargo xtask debug PATH THEME [THEME...]` | Styles without checks and shows what a second pass would change. |
 | `cargo xtask screenshot README.md out.png` | Renders through GitHub's API and screenshots it (needs `gh` and Chrome). |
+| `cargo xtask gallery owner__name:theme ...` | Before and after screenshots of corpus READMEs, side by side in `target/gallery/index.html`. |
 
 The corpus run must report no refusals, no instability and no theme-switch drift. When a property
 test fails, proptest prints the smallest failing README; add it as a regression test once fixed.
