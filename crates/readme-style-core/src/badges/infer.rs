@@ -264,6 +264,9 @@ fn packages(facts: &ProjectFacts, readme: ReadmeView<'_>, found: &mut Vec<Badge>
                     link,
                     why.clone(),
                 ));
+                if !facts.rust_library {
+                    continue;
+                }
                 found.push(badge(
                     K::Docsrs,
                     "docs.rs",

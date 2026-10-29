@@ -47,7 +47,7 @@ fn write_then_check_passes() {
         .arg(dir.path())
         .assert()
         .success()
-        .stdout(predicate::str::contains("restyled (minimal)"));
+        .stdout(predicate::str::contains("restyled (minimal)").and(predicate::str::contains("+++").not()));
     assert!(read(&dir.path().join("README.md")).contains("> [!NOTE]"));
     cli()
         .arg("--check")

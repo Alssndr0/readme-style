@@ -111,6 +111,8 @@ pub struct ProjectFacts {
     pub python_classifiers: Vec<String>,
     pub node_engine: Option<String>,
     pub rust_version: Option<String>,
+    /// The Rust package has a library target (so docs.rs has something to show).
+    pub rust_library: bool,
     pub go_version: Option<String>,
     pub workflows: Vec<Workflow>,
     /// Tool to evidence.

@@ -1,0 +1,16 @@
+name: Feature request
+description: A badge, a theme, a layout or an option readme-style should have.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you want to achieve
+      description: The README you have and how you would like it to look. Links to READMEs that do it well help.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Where the information comes from
+      description: For a badge or an inferred value, which project file or README content tells readme-style it applies.

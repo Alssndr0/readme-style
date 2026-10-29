@@ -1,12 +1,13 @@
+# pre-commit builds the hook from source with cargo (and installs Rust itself when needed).
 - id: readme-style
   name: readme-style
   description: Upgrade a README's presentation without changing its words.
-  entry: readme-style --write
-  language: python
+  entry: readme-style --write --quiet
+  language: rust
   files: (?i)(^|/)readme\.(md|markdown)$
 - id: readme-style-check
   name: readme-style (check only)
   description: Fail when a README is not styled.
-  entry: readme-style --check
-  language: python
+  entry: readme-style --check --quiet
+  language: rust
   files: (?i)(^|/)readme\.(md|markdown)$

@@ -1,0 +1,32 @@
+# Python packaging: `pip install readme-style` installs the compiled binary (no Python code).
+[build-system]
+requires = ["maturin>=1.7,<2"]
+build-backend = "maturin"
+
+[project]
+name = "readme-style"
+description = "Keep your README's words, upgrade its presentation."
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+authors = [{ name = "Alessandro" }]
+keywords = ["readme", "markdown", "badges", "github", "formatter", "cli"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Rust",
+    "Topic :: Documentation",
+    "Topic :: Software Development :: Documentation",
+    "Topic :: Text Processing :: Markup :: Markdown",
+]
+dynamic = ["version"]
+
+[project.urls]
+Repository = "https://github.com/Alssndr0/readme-style"
+Issues = "https://github.com/Alssndr0/readme-style/issues"
+Changelog = "https://github.com/Alssndr0/readme-style/blob/main/CHANGELOG.md"
+
+[tool.maturin]
+bindings = "bin"
+strip = true

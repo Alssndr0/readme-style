@@ -1,0 +1,20 @@
+{
+  "name": "readme-style",
+  "version": "0.0.0",
+  "description": "Keep your README's words, upgrade its presentation.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Alssndr0/readme-style.git"
+  },
+  "homepage": "https://github.com/Alssndr0/readme-style#readme",
+  "keywords": ["readme", "markdown", "badges", "github", "formatter", "cli"],
+  "bin": {
+    "readme-style": "bin/readme-style.js"
+  },
+  "files": ["bin"],
+  "engines": {
+    "node": ">=18"
+  },
+  "optionalDependencies": {}
+}

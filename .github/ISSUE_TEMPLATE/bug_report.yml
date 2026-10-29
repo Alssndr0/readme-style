@@ -1,0 +1,40 @@
+name: Bug report
+description: readme-style changed something it should not have, refused, or crashed.
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The output of `readme-style --version`.
+    validations:
+      required: true
+  - type: input
+    id: command
+    attributes:
+      label: Command
+      placeholder: readme-style --theme startup --check
+    validations:
+      required: true
+  - type: textarea
+    id: readme
+    attributes:
+      label: README
+      description: The smallest README (or a link to one) that shows the problem.
+      render: markdown
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: The output, the diff, or the refusal message.
+      render: text
+    validations:
+      required: true

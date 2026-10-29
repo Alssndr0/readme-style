@@ -1,0 +1,6 @@
+# readme-style styles its own README with this configuration.
+theme = "startup"
+
+[badges]
+# Until the first release, registry badges would read "not found".
+exclude = ["package", "downloads"]

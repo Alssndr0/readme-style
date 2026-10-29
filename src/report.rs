@@ -225,8 +225,10 @@ impl Printer {
                 }
             }
             Status::Changed | Status::Written => {
+                // A preview shows the diff; a write just says so, like a formatter.
                 if !self.quiet
                     && !report.previewed
+                    && report.status == Status::Changed
                     && let Some(diff) = &report.diff
                 {
                     let _ = out.write_all(colored_diff(diff).as_bytes());

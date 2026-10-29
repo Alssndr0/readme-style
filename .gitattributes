@@ -1,0 +1,4 @@
+# Keep examples and snapshots byte-identical on every platform.
+* text=auto eol=lf
+*.png binary
+*.svg text eol=lf

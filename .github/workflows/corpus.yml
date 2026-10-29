@@ -1,0 +1,28 @@
+# Styles ~140 popular READMEs with every theme and fails on any refusal, instability or
+# theme-switch drift. Weekly, because the READMEs change under us.
+name: Corpus
+
+on:
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  corpus:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release -p xtask --locked
+      - run: ./target/release/xtask corpus fetch --jobs 16
+      - run: ./target/release/xtask corpus run
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: corpus-output
+          path: target/corpus-out
+          retention-days: 14

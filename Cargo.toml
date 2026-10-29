@@ -1,7 +1,44 @@
+[package]
+name = "readme-style"
+description = "Keep your README's words, upgrade its presentation: badges, layout, navigation and callouts, deterministic and offline."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme = "README.md"
+
+include = ["/src", "/tests", "/README.md", "/LICENSE"]
+
+[[bin]]
+name = "readme-style"
+path = "src/main.rs"
+
+[dependencies]
+readme-style-core.workspace = true
+anstream.workspace = true
+anstyle.workspace = true
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+similar.workspace = true
+
+[dev-dependencies]
+assert_cmd.workspace = true
+predicates.workspace = true
+tempfile.workspace = true
+
+[lints]
+workspace = true
+
 [workspace]
 resolver = "3"
 members = ["crates/*", "xtask"]
-default-members = ["crates/*"]
+default-members = [".", "crates/*"]
 
 [workspace.package]
 version = "0.2.0"

@@ -10,6 +10,9 @@ repository.workspace = true
 homepage.workspace = true
 keywords.workspace = true
 categories = ["text-processing", "development-tools"]
+readme = "README.md"
+# The gallery test reads ../../examples, which only exists in the repository.
+exclude = ["tests/examples.rs", "proptest-regressions"]
 
 [dependencies]
 comrak.workspace = true

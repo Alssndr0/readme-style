@@ -793,7 +793,6 @@ version = "0.2.0"
 dependencies = [
  "anstream",
  "anstyle",
- "anyhow",
  "assert_cmd",
  "clap",
  "predicates",

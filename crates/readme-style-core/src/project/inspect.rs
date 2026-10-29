@@ -237,14 +237,31 @@ impl Inspector<'_> {
         let Some(name) = string(package, "name") else {
             return;
         };
-        self.adopt(Some(name.clone()), string(package, "description"));
+        // `key.workspace = true` takes the value from the workspace root manifest.
+        let inherited = data
+            .get("workspace")
+            .and_then(|w| w.get("package"))
+            .and_then(Value::as_table);
+        let field = |key: &str| match package.get(key) {
+            Some(Value::String(value)) => Some(value.clone()),
+            Some(Value::Table(t)) if t.get("workspace").and_then(Value::as_bool) == Some(true) => {
+                inherited.and_then(|w| string(w, key))
+            }
+            _ => None,
+        };
+        self.adopt(Some(name.clone()), field("description"));
         if package.get("publish").and_then(Value::as_bool) != Some(false) {
             self.facts.packages.push(Package::new(Registry::Crates, name));
         }
-        self.facts.rust_version = string(package, "rust-version");
-        self.adopt_license(package.get("license").and_then(Value::as_str));
+        self.facts.rust_version = field("rust-version");
+        self.adopt_license(field("license").as_deref());
+        let manifest_dir = self
+            .search(&["Cargo.toml"])
+            .and_then(|p| p.parent().map(Path::to_path_buf));
+        self.facts.rust_library = data.contains_key("lib")
+            || manifest_dir.is_some_and(|dir| self.fs.is_file(&dir.join("src").join("lib.rs")));
         for key in ["homepage", "documentation", "repository"] {
-            self.url(key, string(package, key));
+            self.url(key, field(key));
         }
     }
 
@@ -456,12 +473,33 @@ line-length = 100
             .with(
                 "/r/pkg/Cargo.toml",
                 "[package]\nname = \"widget\"\nrust-version = \"1.80\"\n",
-            );
+            )
+            .with("/r/pkg/src/lib.rs", "");
         let facts = inspect(&fs, Path::new("/r/pkg/README.md"), &Overrides::default());
         assert_eq!(facts.license.as_deref(), Some("Apache-2.0"));
         assert_eq!(facts.license_file.as_deref(), Some("../LICENSE"));
         assert_eq!(facts.repo.as_deref(), Some("acme/mono"));
         assert_eq!(facts.rust_version.as_deref(), Some("1.80"));
+        assert!(facts.rust_library);
+    }
+
+    #[test]
+    fn workspace_inheritance() {
+        let manifest = "[package]\nname = \"tool\"\nlicense.workspace = true\nrust-version.workspace = true\n\n\
+                        [workspace.package]\nlicense = \"MIT\"\nrust-version = \"1.85\"\n";
+        let facts = inspect(
+            &MemoryFs::new().with("/p/Cargo.toml", manifest),
+            readme(),
+            &Overrides::default(),
+        );
+        assert_eq!(
+            (facts.license.as_deref(), facts.rust_version.as_deref()),
+            (Some("MIT"), Some("1.85"))
+        );
+        assert!(
+            !facts.rust_library,
+            "a binary-only crate has no docs.rs page worth a badge"
+        );
     }
 
     #[test]
