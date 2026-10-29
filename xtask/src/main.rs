@@ -255,6 +255,8 @@ fn corpus_run(args: &[&str]) -> Result<bool> {
             };
             if output == text {
                 tally.unchanged += 1;
+                // An output from an earlier run would no longer be true.
+                let _ = fs::remove_file(out.join(&name).join(format!("{}.md", theme.name)));
             } else {
                 tally.changed += 1;
                 let target = out.join(&name);

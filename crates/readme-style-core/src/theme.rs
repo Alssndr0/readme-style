@@ -203,7 +203,7 @@ impl Theme {
 /// alone counts as part of a word); and shortcodes such as `:rocket:`, which GitHub shows as
 /// emoji.
 pub(crate) fn whole_title(pattern: &str) -> Result<Regex, regex::Error> {
-    const DECORATION: &str = r"(?:[0-9#*]\x{FE0F}?\x{20E3}|[\W\p{Extended_Pictographic}\x{200D}\x{20E3}\x{FE0E}\x{FE0F}]|:[a-z0-9_+-]+:)*";
+    const DECORATION: &str = r"(?:[0-9#*]\x{FE0F}?\x{20E3}|[\W\p{Extended_Pictographic}\x{200D}\x{20E3}\x{FE0E}\x{FE0F}]|(?-i::[a-z0-9_+-]+:))*";
     Regex::new(&format!(r"(?i)^{DECORATION}(?:{pattern}){DECORATION}$"))
 }
 
@@ -362,6 +362,12 @@ mod tests {
         // A combining mark ends a word; it is not decoration.
         assert!(!whole_title("कर").expect("valid").is_match("करो"));
         assert!(!faq.is_match("FAQs and more"));
+        // Shortcodes are lowercase; GitHub shows `:Package:` as text.
+        assert!(
+            !whole_title("contents")
+                .expect("valid")
+                .is_match(":Package: Contents")
+        );
     }
 
     fn table(text: &str) -> Table {

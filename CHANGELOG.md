@@ -65,11 +65,13 @@ All notable changes are listed here. The format follows
   shows (a list, heading, code, quote, table or rule): GitHub shows `[!NOTE]` as text when an alert
   holds only a comment or invisible HTML.
 - A link is followed only if it stays in the repository it sits in, so a folder link to another
-  repository is refused too, and `..` from inside a nested repository works. A README in a folder
-  that cannot be written is rewritten in place.
-- An HTML block that leaves a `<details>`, `<div>` or table open, or holds a folded section, a list
-  or a table, is no longer taken for part of the hero or the tagline, so the header is never placed
-  inside it; a `<summary>` titled like a table of contents counts as the README's own.
+  repository is refused too, and `..` from inside a nested repository works. Outside any
+  repository, the README itself may only link within its folder. A README in a folder that cannot
+  be written is rewritten in place.
+- HTML holding a folded section, a list or a table is never part of the hero or the tagline, so
+  the header is never placed inside a `<details>` or a table cell. The centering wrapper nests
+  with the README's own `<div>`s, widening to enclose them instead of crossing them. A table of
+  contents written in HTML, or a `<summary>` titled like one, counts as the README's own.
 
 ## [0.2.0] - 2026-10-29
 

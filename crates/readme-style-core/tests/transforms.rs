@@ -222,6 +222,38 @@ fn an_open_details_block_is_not_part_of_the_hero() {
 }
 
 #[test]
+fn the_hero_stops_at_folded_sections_and_the_wrapper_nests() {
+    // An empty `<details open>` or `<table>` opening is no media.
+    let details = "<p align=\"center\"><img src=\"logo.png\" width=\"100\"></p>\n\n<p align=\"center\">A tool for things.</p>\n\n<details open>\n\n<summary>More</summary>\n\nText.\n\n</details>\n\n## Install\n\nRun it.\n";
+    let licensed = ProjectFacts {
+        license: Some("MIT".into()),
+        ..ProjectFacts::default()
+    };
+    for name in ["minimal", "startup"] {
+        let out = run_with(details, &theme(name), &licensed).output;
+        let header = out.find("<!-- /readme-style:header").expect("a header");
+        assert!(
+            header < out.find("<details open>").expect("details"),
+            "{name}:\n{out}"
+        );
+    }
+    // A tagline in a `<div>` closed by a later block: the header follows the badges inside it,
+    // and the centering wrapper closes after the README's own `</div>`, so the two nest.
+    let div = "# Thing\n\n<div align=\"center\">\n  <strong>A tool that makes things.</strong>\n\n[![CI](https://img.shields.io/badge/ci-passing-green)](x)\n\n</div>\n\n## Install\n\nRun it.\n\n## Usage\n\nUse it.\n";
+    let out = run(div, "startup");
+    let badges = out.find("[![CI]").expect("the README's badges");
+    let header = out.find("readme-style:header").expect("a header");
+    let own_close = out.find("</div>\n").expect("the README's </div>");
+    let wrapper_close = out
+        .find("</div><!-- /readme-style:center -->")
+        .expect("the wrapper");
+    assert!(
+        badges < header && header < own_close && own_close < wrapper_close,
+        "{out}"
+    );
+}
+
+#[test]
 fn headings_without_text_get_no_entry() {
     let readme =
         "# T\n\n## ![Demo](demo.gif)\n\n## <img src=\"logo.png\" alt=\"Logo\">\n\n## A\n\n## B\n\n## C\n";

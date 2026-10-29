@@ -24,13 +24,22 @@ pub(crate) fn find_readme(path: &Path) -> Option<PathBuf> {
 }
 
 /// The file a README path names, after symbolic links, provided no link on the way leaves the
-/// repository it sits in, or points into a `.git` folder. A link inside a cloned repository, to
+/// repository it sits in or points into a `.git` folder. A link inside a cloned repository, to
 /// the README or to a folder above it, must not point readme-style at a file elsewhere: not to
-/// rewrite it, not to print it in a diff, not to send it to a model. Links outside any
-/// repository, such as a projects folder linked from home, are followed as usual.
+/// rewrite it, not to print it in a diff, not to send it to a model.
+///
+/// Outside any repository (a downloaded archive, a folder of notes), the README itself may only
+/// link within its own folder, while folder links on the way are the user's own, such as a
+/// projects folder linked from home, and are followed.
+///
+/// One setup is refused although it is harmless: a link in a folder that is itself a
+/// repository (a home folder kept in git) to a project elsewhere. It cannot be told apart from
+/// a repository linking to another one; the message names the real path to use instead.
 pub(crate) fn resolve_readme(path: &Path) -> io::Result<PathBuf> {
+    let absolute = std::path::absolute(path)?;
+    let last = absolute.components().count().saturating_sub(1);
     let mut real = PathBuf::new();
-    for component in std::path::absolute(path)?.components() {
+    for (index, component) in absolute.components().enumerate() {
         match component {
             Component::Prefix(_) | Component::RootDir => real.push(component),
             Component::CurDir => {}
@@ -44,16 +53,25 @@ pub(crate) fn resolve_readme(path: &Path) -> io::Result<PathBuf> {
                     continue;
                 }
                 let resolved = fs::canonicalize(&next)?;
-                if let Some(repository) = repository_of(&real) {
+                let boundary = match repository_of(&real) {
+                    Some(repository) => Some(("the repository at", repository)),
+                    None if index == last => Some(("its folder", real.clone())),
+                    None => None,
+                };
+                if let Some((what, boundary)) = boundary {
+                    // Compare real paths: on Windows they carry the same `\\?\` prefix.
+                    let boundary = fs::canonicalize(&boundary)?;
                     let inside = resolved
-                        .strip_prefix(&repository)
+                        .strip_prefix(&boundary)
                         .is_ok_and(|rest| rest.components().all(|c| c.as_os_str() != ".git"));
                     if !inside {
+                        let target = fs::canonicalize(path).unwrap_or_else(|_| resolved.clone());
                         return Err(io::Error::other(format!(
-                            "{} leads to {}, outside the repository at {}; run readme-style on that file directly if you mean to",
+                            "{} leads to {}, outside {what} {}; if that is intended, run readme-style on {}",
                             next.display(),
                             resolved.display(),
-                            repository.display()
+                            boundary.display(),
+                            target.display()
                         )));
                     }
                 }

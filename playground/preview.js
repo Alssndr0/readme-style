@@ -12,8 +12,12 @@ const tell = (message) => parent.postMessage({ ...message, token: TOKEN }, "*");
 const decode = (text) => { try { return decodeURIComponent(text); } catch { return text; } };
 // Taken before the README's own elements exist, which could otherwise shadow them by name.
 const byId = Document.prototype.getElementById.bind(document);
-const scrollTarget = (id) => byId("user-content-" + id) || byId(id);
+const byName = Document.prototype.getElementsByName.bind(document);
+const scrollTarget = (id) =>
+  byId("user-content-" + id) || byId(id) || byName("user-content-" + id)[0] || null;
 const follow = (event) => {
+  // The main button, or the middle one (which would open a tab); never the right one.
+  if (event.button !== 0 && event.button !== 1) return;
   const link = event.composedPath().find(
     (node) => node instanceof Element && (node.localName === "a" || node.localName === "area"));
   if (!link) return;
@@ -23,7 +27,7 @@ const follow = (event) => {
     const id = decode(href.slice(1));
     const target = id ? scrollTarget(id) : null;
     if (target) target.scrollIntoView({ behavior: "smooth" });
-    else if (!id) scrollTo({ top: 0, behavior: "smooth" });
+    else if (!id || id.toLowerCase() === "top") scrollTo({ top: 0, behavior: "smooth" });
   } else if (href) {
     tell({ readmeStyle: "open", href });
   }
@@ -125,7 +129,8 @@ export async function previewDocument(html, { css, images, repo, scroll }) {
   const policy = [
     "default-src 'none'",
     "img-src https: http: data:",
-    "media-src https: http:",
+    // Like GitHub, which plays only videos it hosts.
+    "media-src https://github.com https://*.githubusercontent.com",
     "style-src 'unsafe-inline'",
     `script-src 'nonce-${n}'`,
     "base-uri 'none'",
@@ -148,7 +153,8 @@ export async function previewDocument(html, { css, images, repo, scroll }) {
 export function linkTarget(href, repo) {
   if (/^https?:\/\//i.test(href)) return href;
   if (isRelative(href) && repo) {
-    return `https://github.com/${repo}/blob/HEAD/${projectPath(href)}`;
+    const suffix = href.match(/[?#].*$/)?.[0] ?? "";
+    return `https://github.com/${repo}/blob/HEAD/${projectPath(href)}${suffix}`;
   }
   return null;
 }

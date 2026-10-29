@@ -33,7 +33,7 @@ const PER_ELEMENT = {
   source: ["srcset", "media", "type"],
   ol: ["type"],
   input: ["type", "checked", "disabled"],
-  video: ["src", "poster", "controls", "muted", "loop", "playsinline"],
+  video: ["src", "controls", "muted"],
 };
 
 /** Classes that the Markdown renderer itself produces, which the preview's styles rely on. */
@@ -61,7 +61,7 @@ function clean(element) {
       }
     }
     if (keep && name === "href") keep = safeUrl(attribute.value, SAFE_LINK);
-    if (keep && (name === "src" || name === "poster")) keep = safeUrl(attribute.value, SAFE_SOURCE);
+    if (keep && name === "src") keep = safeUrl(attribute.value, SAFE_SOURCE);
     if (keep && name === "srcset") {
       keep = attribute.value.split(",").every((c) => safeUrl(c.trim().split(/\s+/)[0] ?? "", SAFE_SOURCE));
     }

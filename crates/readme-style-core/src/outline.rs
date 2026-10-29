@@ -8,7 +8,7 @@ use std::sync::LazyLock;
 use regex::Regex;
 
 use crate::document::{Block, BlockKind, Document};
-use crate::html::closes;
+use crate::html::depth_change;
 use crate::theme::whole_title;
 use crate::urls;
 
@@ -74,7 +74,7 @@ pub(crate) struct Outline {
 /// A paragraph or HTML block holding only images, links around them, or comments.
 pub(crate) fn is_media(block: &Block) -> bool {
     match block.kind {
-        BlockKind::Html => block.text.trim().is_empty(),
+        BlockKind::Html => block.text.trim().is_empty() && !is_body_html(block),
         BlockKind::Paragraph => !block.images.is_empty() && block.text.trim().is_empty(),
         _ => false,
     }
@@ -109,23 +109,36 @@ pub(crate) fn is_link_row(block: &Block) -> bool {
     !rest.chars().any(char::is_alphanumeric)
 }
 
-/// A short, self-contained HTML block, such as a centered subtitle or a row of links.
-fn is_hero_html(block: &Block, centered: bool) -> bool {
-    if block.kind != BlockKind::Html {
-        return false;
-    }
-    // HTML that leaves a wrapper open (`<details open>` before a list) wraps what follows, and
-    // a folded section, a table or a list is body content: none of them is a hero.
-    let source = block.literal.to_ascii_lowercase();
-    if !closes(&source, WRAPPERS)
-        || ["<details", "<table", "<ul", "<ol"]
+/// HTML that is body content wherever it stands: a folded section, a table, a list.
+fn is_body_html(block: &Block) -> bool {
+    block.kind == BlockKind::Html && {
+        let source = block.literal.to_ascii_lowercase();
+        ["<details", "<table", "<ul", "<ol"]
             .iter()
             .any(|tag| source.contains(tag))
+    }
+}
+
+/// How many wrappers (`<div>`, `<details>` and the like) a block opens, or closes if negative.
+pub(crate) fn wrapper_change(block: &Block) -> i32 {
+    if block.kind == BlockKind::Html {
+        depth_change(&block.literal, WRAPPERS)
+    } else {
+        0
+    }
+}
+
+/// A short, self-contained HTML block, such as a centered subtitle or a row of links. One that
+/// opens a `<div>` it does not close wraps what follows instead.
+fn is_hero_html(block: &Block, centered: bool) -> bool {
+    if block.kind != BlockKind::Html
+        || is_body_html(block)
+        || wrapper_change(block) != 0
         || block.text.trim().chars().count() > HERO_HTML_MAX_CHARS
     {
         return false;
     }
-    !centered || CENTERED.is_match(&source)
+    !centered || CENTERED.is_match(&block.literal.to_ascii_lowercase())
 }
 
 impl Outline {
@@ -163,7 +176,7 @@ impl Outline {
             .collect();
         // A README without a title may open with a preamble (sponsors, a notice) before the image
         // that starts its hero; the hero starts at that image when it comes early.
-        let preamble = if title.is_none() {
+        let mut preamble = if title.is_none() {
             // Comments are invisible, so they do not count among the first three blocks.
             intro
                 .iter()
@@ -175,6 +188,10 @@ impl Outline {
         } else {
             0
         };
+        // A bare `<div align="center">` opening around that image belongs to the hero too.
+        while preamble > 0 && is_media(intro[preamble - 1].1) && wrapper_change(intro[preamble - 1].1) > 0 {
+            preamble -= 1;
+        }
         let hero_blocks = &intro[preamble..];
         let tagline = find_tagline(hero_blocks);
 
@@ -345,10 +362,7 @@ fn find_tagline(intro: &[(usize, &Block)]) -> Option<usize> {
         let text = block.text.trim();
         let lines = match block.kind {
             BlockKind::Paragraph => block.end - block.start,
-            // HTML that leaves an element open wraps what follows; it is no tagline.
-            BlockKind::Html if block.images.is_empty() && closes(&block.literal, WRAPPERS) => {
-                text.lines().count()
-            }
+            BlockKind::Html if block.images.is_empty() && !is_body_html(block) => text.lines().count(),
             _ => return None,
         };
         let short = !text.is_empty() && text.chars().count() <= TAGLINE_MAX_CHARS && lines <= 2;
@@ -362,8 +376,13 @@ fn has_user_toc(doc: &Document, user: &[(usize, &Block)]) -> bool {
         return true;
     }
     user.iter().any(|(_, block)| match block.kind {
-        // `<details><summary>Table of Contents</summary>` around the list.
-        BlockKind::Html => is_toc_title(block.text.trim()),
+        // `<details><summary>Table of Contents</summary>` around a Markdown list, or an HTML list
+        // of links to sections.
+        BlockKind::Html => {
+            let anchors = block.links.iter().filter(|l| l.href.starts_with('#')).count();
+            is_toc_title(block.text.trim())
+                || (is_body_html(block) && anchors >= 3 && anchors * 5 >= block.links.len() * 3)
+        }
         BlockKind::Paragraph => {
             matches!(
                 block.text.trim().to_ascii_lowercase().as_str(),

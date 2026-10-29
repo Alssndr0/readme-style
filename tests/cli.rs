@@ -272,6 +272,32 @@ fn links_never_lead_out_of_the_repository() {
     assert_eq!(read(&dir.path().join(".git/hooks/pre-commit")), "#!/bin/sh\n");
 }
 
+#[cfg(unix)]
+#[test]
+fn outside_any_repository_the_readme_stays_in_its_folder() {
+    let root = TempDir::new().expect("temp dir");
+    fs::create_dir_all(root.path().join("home/.ssh")).expect("folders");
+    fs::create_dir_all(root.path().join("download")).expect("folders");
+    fs::write(root.path().join("home/.ssh/id_ed25519"), "SECRET KEY MATERIAL\n").expect("key");
+    let readme = root.path().join("download/README.md");
+    std::os::unix::fs::symlink("../home/.ssh/id_ed25519", &readme).expect("link");
+    cli()
+        .arg("--check")
+        .arg(root.path().join("download"))
+        .assert()
+        .code(2)
+        .stdout(predicate::str::contains("SECRET").not());
+    // A folder link of the user's own, outside any repository, is followed.
+    fs::create_dir_all(root.path().join("data/project")).expect("folders");
+    fs::write(root.path().join("data/project/README.md"), README).expect("readme");
+    std::os::unix::fs::symlink(root.path().join("data"), root.path().join("home/projects")).expect("link");
+    cli()
+        .arg("--check")
+        .arg(root.path().join("home/projects/project"))
+        .assert()
+        .code(1);
+}
+
 #[test]
 fn a_parent_folder_outside_the_current_repository_is_fine() {
     let parent = TempDir::new().expect("temp dir");

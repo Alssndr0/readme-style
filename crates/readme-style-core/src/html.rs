@@ -51,10 +51,9 @@ pub(crate) fn tokenize(html: &str) -> Vec<Tag> {
     tags
 }
 
-/// Whether `html` closes every `element` it opens: a block that leaves a `<div>` or a
-/// `<details>` open wraps whatever follows it.
-pub(crate) fn closes(html: &str, elements: &[&str]) -> bool {
-    let mut depth = vec![0i32; elements.len()];
+/// How many of `elements` the HTML opens (positive) or closes (negative) on balance.
+pub(crate) fn depth_change(html: &str, elements: &[&str]) -> i32 {
+    let mut depth = 0;
     for tag in tokenize(html) {
         let (name, step) = match &tag {
             Tag::Start {
@@ -65,11 +64,11 @@ pub(crate) fn closes(html: &str, elements: &[&str]) -> bool {
             Tag::End(name) => (name, -1),
             _ => continue,
         };
-        if let Some(i) = elements.iter().position(|e| e.eq_ignore_ascii_case(name)) {
-            depth[i] += step;
+        if elements.iter().any(|e| e.eq_ignore_ascii_case(name)) {
+            depth += step;
         }
     }
-    depth.iter().all(|&d| d <= 0)
+    depth
 }
 
 /// An `<img>`, as a browser would see it.
@@ -114,21 +113,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn wrappers_are_closed_or_not() {
+    fn depth_changes() {
         let wrappers = ["div", "details"];
-        for html in [
-            r#"<div align="center"><img src="a.png"><h1>T</h1></div>"#,
-            r#"<p align="center"><a href="x"><img src="a.png">"#,
-            "<details><summary>More</summary>text</details>",
-        ] {
-            assert!(super::closes(html, &wrappers), "{html}");
-        }
-        for html in [
-            "<details open>\n<summary>Contents</summary>",
-            "<div>",
-            "<DIV><div></div>",
-        ] {
-            assert!(!super::closes(html, &wrappers), "{html}");
+        let cases = [
+            (r#"<div align="center"><img src="a.png"><h1>T</h1></div>"#, 0),
+            (r#"<p align="center"><a href="x"><img src="a.png">"#, 0),
+            ("<details open>\n<summary>Contents</summary>", 1),
+            ("<DIV><div></div>", 1),
+            ("</div>", -1),
+            ("<div/>", 0),
+        ];
+        for (html, depth) in cases {
+            assert_eq!(super::depth_change(html, &wrappers), depth, "{html}");
         }
     }
 
