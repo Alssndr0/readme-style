@@ -35,3 +35,12 @@ mod urls;
 
 pub use diagnostic::Diagnostic;
 pub use engine::{Outcome, StyleError, recorded_theme, style, style_unchecked};
+
+/// Render Markdown to HTML as readme-style reads it (comrak with GitHub's extensions), with an
+/// `id` on every heading so links to sections work, for previews.
+///
+/// GitHub also removes scripts, event handlers and other unsafe HTML; this does not. Show the
+/// result only where its scripts cannot run, such as a sandboxed frame.
+pub fn render_html(markdown: &str) -> String {
+    markdown::to_html_for_preview(markdown)
+}

@@ -11,6 +11,8 @@
 //!   screenshot with headless Chrome (needs `gh` and Chrome or Chromium).
 //! * `gallery REPO:THEME...`: before and after screenshots of corpus READMEs, side by side in
 //!   `target/gallery/index.html` (run `corpus fetch` first).
+//! * `playground [--out DIR]`: build the browser playground (the engine compiled to
+//!   WebAssembly, the page in `playground/`, and the examples) into `target/playground`.
 
 use std::fmt::Write as _;
 use std::fs;
@@ -59,9 +61,10 @@ fn main() -> ExitCode {
         ["screenshot", readme, png, rest @ ..] => screenshot(Path::new(readme), Path::new(png), rest),
         ["debug", readme, themes @ ..] if !themes.is_empty() => debug(Path::new(readme), themes),
         ["gallery", pairs @ ..] if !pairs.is_empty() => gallery(pairs),
+        ["playground", rest @ ..] => playground(rest),
         _ => {
             eprintln!(
-                "usage: cargo xtask (corpus fetch|corpus run|examples [--check]|screenshot README PNG)"
+                "usage: cargo xtask (corpus fetch|corpus run|examples [--check]|screenshot README PNG|playground)"
             );
             return ExitCode::from(2);
         }
@@ -360,20 +363,15 @@ fn step_name(step: &str) -> &str {
 
 /// Regenerate (or `--check`) every `examples/*/README.<theme>.md` and the gallery page,
 /// `examples/README.md`, which shows what each theme changed with the diff.
-#[allow(clippy::print_stdout)]
-fn examples(args: &[&str]) -> Result<bool> {
-    let check = args.contains(&"--check");
-    let mut current = true;
+/// The example projects, in the order the gallery introduces them, then any others by name.
+fn example_dirs() -> Result<Vec<PathBuf>> {
     let mut dirs: Vec<PathBuf> = fs::read_dir(root().join("examples"))?
         .filter_map(Result::ok)
         .map(|e| e.path())
+        .filter(|p| p.join("README.md").is_file())
         .collect();
-    // In the order the gallery introduces them, then any others by name.
-    let rank = |dir: &PathBuf| {
-        let name = dir
-            .file_name()
-            .map(|n| n.to_string_lossy().into_owned())
-            .unwrap_or_default();
+    dirs.sort_by_key(|dir| {
+        let name = file_name(dir);
         (
             EXAMPLE_ABOUT
                 .iter()
@@ -381,8 +379,21 @@ fn examples(args: &[&str]) -> Result<bool> {
                 .unwrap_or(usize::MAX),
             name,
         )
-    };
-    dirs.sort_by_key(rank);
+    });
+    Ok(dirs)
+}
+
+fn file_name(path: &Path) -> String {
+    path.file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default()
+}
+
+#[allow(clippy::print_stdout)]
+fn examples(args: &[&str]) -> Result<bool> {
+    let check = args.contains(&"--check");
+    let mut current = true;
+    let dirs = example_dirs()?;
     let mut page = String::from(
         "# Before and after\n\n\
          Four fictional projects, each styled with every built-in theme. For each one: what changed, the \
@@ -407,11 +418,8 @@ fn examples(args: &[&str]) -> Result<bool> {
         }
         Ok(())
     };
-    for dir in dirs.into_iter().filter(|d| d.join("README.md").is_file()) {
-        let name = dir
-            .file_name()
-            .map(|n| n.to_string_lossy().into_owned())
-            .unwrap_or_default();
+    for dir in dirs {
+        let name = file_name(&dir);
         let readme = fs::canonicalize(dir.join("README.md"))?;
         let text = fs::read_to_string(&readme)?;
         let config = config::discover(&OsFs, &readme)?;
@@ -615,6 +623,110 @@ fn screenshot(readme: &Path, png: &Path, args: &[&str]) -> Result<bool> {
     let _ = fs::remove_file(&html);
     println!("{}", png.display());
     Ok(status.success())
+}
+
+// playground
+
+/// The page's own files, served as they are.
+const PLAYGROUND_FILES: &[&str] = &[
+    "index.html",
+    "app.css",
+    "markdown.css",
+    "app.js",
+    "engine.js",
+    "preview.js",
+    "project.js",
+];
+
+/// The version in `[workspace.package]`.
+fn workspace_version() -> Result<String> {
+    let manifest = fs::read_to_string(root().join("Cargo.toml"))?;
+    manifest
+        .split("[workspace.package]")
+        .nth(1)
+        .and_then(|section| section.lines().find_map(|line| line.strip_prefix("version = ")))
+        .map(|v| v.trim().trim_matches('"').to_owned())
+        .context("no version in [workspace.package]")
+}
+
+/// Every file of an example project except its READMEs (the original and the styled ones), by
+/// path inside it.
+fn project_files(
+    dir: &Path,
+    base: &Path,
+    files: &mut serde_json::Map<String, serde_json::Value>,
+) -> Result<()> {
+    for entry in fs::read_dir(dir)? {
+        let path = entry?.path();
+        let relative = path
+            .strip_prefix(base)
+            .unwrap_or(&path)
+            .to_string_lossy()
+            .replace('\\', "/");
+        if path.is_dir() {
+            project_files(&path, base, files)?;
+        } else if !(path.parent() == Some(base) && file_name(&path).starts_with("README.")) {
+            files.insert(relative, fs::read_to_string(&path).unwrap_or_default().into());
+        }
+    }
+    Ok(())
+}
+
+#[allow(clippy::print_stdout)]
+fn playground(args: &[&str]) -> Result<bool> {
+    let out = flag(args, "--out").map_or_else(|| root().join("target").join("playground"), PathBuf::from);
+    let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".into());
+    let built = Command::new(cargo)
+        .current_dir(root())
+        .args([
+            "build",
+            "--profile",
+            "wasm",
+            "--target",
+            "wasm32-unknown-unknown",
+            "-p",
+            "readme-style-wasm",
+        ])
+        .status()
+        .context("running cargo")?;
+    if !built.success() {
+        bail!(
+            "building the WebAssembly module failed; the target is installed with `rustup target add wasm32-unknown-unknown`"
+        );
+    }
+    fs::create_dir_all(&out)?;
+    fs::copy(
+        root().join("target/wasm32-unknown-unknown/wasm/readme_style_wasm.wasm"),
+        out.join("readme_style_wasm.wasm"),
+    )?;
+    let version = workspace_version()?;
+    for name in PLAYGROUND_FILES {
+        let text = fs::read_to_string(root().join("playground").join(name))?;
+        fs::write(out.join(name), text.replace("{{version}}", &version))?;
+    }
+    let mut examples = Vec::new();
+    for dir in example_dirs()? {
+        let name = file_name(&dir);
+        let about = EXAMPLE_ABOUT
+            .iter()
+            .find(|(n, _)| *n == name)
+            .map_or("", |(_, a)| *a);
+        let mut files = serde_json::Map::new();
+        project_files(&dir, &dir, &mut files)?;
+        examples.push(serde_json::json!({
+            "name": name,
+            "about": about,
+            "readme": fs::read_to_string(dir.join("README.md"))?,
+            "files": files,
+        }));
+    }
+    fs::write(out.join("examples.json"), serde_json::to_string(&examples)?)?;
+    println!(
+        "playground in {}\nserve it with: python3 -m http.server --directory {} 8000",
+        out.display(),
+        out.display()
+    );
+    Ok(true)
 }
 
 #[cfg(test)]

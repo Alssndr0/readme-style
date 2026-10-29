@@ -13,6 +13,8 @@ All notable changes are listed here. The format follows
   print the suggestions. Configured with flags, the environment, or an `[ai]` table (provider and
   model only: a repository cannot choose where your key is sent).
 - A before-and-after gallery in `examples/`: four projects, every theme, what changed and the diff.
+- A browser playground (`cargo xtask playground`): the engine compiled to WebAssembly, with a
+  sandboxed preview, the diff, badge evidence, the examples, and project folders read in the page.
 
 ### Changed
 

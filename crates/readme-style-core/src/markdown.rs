@@ -17,6 +17,14 @@ pub(crate) fn options() -> Options<'static> {
     options
 }
 
+/// Render a whole document for people to look at: headings get an `id`, so links to sections
+/// work. Raw HTML is kept as it is.
+pub(crate) fn to_html_for_preview(text: &str) -> String {
+    let mut options = options();
+    options.extension.header_id_prefix = Some(String::new());
+    comrak::markdown_to_html(text, &options)
+}
+
 /// Render a whole document to HTML, with `data-sourcepos` on block elements.
 pub(crate) fn to_html_with_sourcepos(text: &str) -> String {
     let mut options = options();

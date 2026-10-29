@@ -1,12 +1,13 @@
 # Architecture
 
-readme-style is a Cargo workspace with three crates:
+readme-style is a Cargo workspace with four crates:
 
 | Crate | Path | Role |
 |-------|------|------|
 | `readme-style` | `/` (root) | The command-line tool: arguments, files, diffs, reports, exit codes, and `suggest` (the only network code). |
 | `readme-style-core` | `crates/readme-style-core` | The engine: parsing, project inspection, themes, transforms, the guard. No terminal, no process. |
-| `xtask` | `xtask` | Development tasks (corpus, gallery, debugging, screenshots). Never published. |
+| `readme-style-wasm` | `crates/readme-style-wasm` | The engine compiled to WebAssembly for the browser playground (`playground/`). Never published. |
+| `xtask` | `xtask` | Development tasks (corpus, gallery, playground, debugging, screenshots). Never published. |
 
 The engine does not read files on its own: project inspection goes through the `FileSystem` trait
 (`OsFs` for the disk, `MemoryFs` for tests and for hosts without one), and styling is a pure
@@ -112,7 +113,7 @@ reports the first difference with its line in the original.
 | Guarantee tests | `crates/readme-style-core/tests/guarantees.rs` | Idempotency, theme switching, line endings; property tests over generated READMEs, well-formed (never refused) and adversarial (never a crash, never unstable output). |
 | Gallery | `examples/`, `crates/readme-style-core/tests/examples.rs` | Snapshots of every theme on four projects. |
 | CLI tests | `tests/cli.rs` | The binary: modes, exit codes, configuration, JSON, CRLF. |
-| Corpus | `cargo xtask corpus` | About 140 popular READMEs, every theme, every theme switch: no refusals, no instability, no drift. |
+| Corpus | `cargo xtask corpus` | About 200 popular READMEs, every theme, every theme switch: no refusals, no instability, no drift. |
 
 ## Performance
 
@@ -121,6 +122,23 @@ run; the largest README in the corpus (2,700 lines) takes about 110 ms. Parsing 
 engine parses once per change rather than once per step, and reads text from the tree instead of
 rendering and tokenizing every block. `cargo run --release -p readme-style-core --example profile --
 README.md` times each stage.
+
+## The playground
+
+`cargo xtask playground` builds a static site in `target/playground`: the page in `playground/`, the
+examples, and `crates/readme-style-wasm` compiled to WebAssembly (the `wasm` profile, optimized for
+size: about 3 MB, 0.9 MB compressed). The module has no imports and no glue library. JavaScript writes
+a JSON request into a buffer the module hands out, calls `style`, `render` or `themes`, and reads the
+JSON answer back; the only `unsafe` is the `no_mangle` that exports those functions.
+
+A request carries the README and, optionally, the project's files. They are served to the engine
+through `MemoryFs`, so configuration discovery, theme choice and project inspection are the same code
+as on the command line, and a folder opened in the browser gets the badges it would get there. Nothing
+is uploaded.
+
+The preview renders the README in a frame with `sandbox="allow-scripts"` (an opaque origin) and a
+content security policy that lets only the frame's own script run, by nonce. That script scrolls to
+anchors and passes other links to the page; a README's own scripts and event handlers never run.
 
 ## Suggestions
 

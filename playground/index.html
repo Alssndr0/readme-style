@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>readme-style playground</title>
+    <meta name="description" content="Keep your README's words, upgrade its presentation. The readme-style engine, running in your browser.">
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="app.css">
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <header class="bar">
+      <div class="brand">
+        <h1>readme-style</h1>
+        <span class="tag">playground</span>
+        <span class="version">v{{version}}</span>
+      </div>
+      <div class="controls">
+        <label>Example
+          <select id="example"></select>
+        </label>
+        <label class="button" title="Badges are inferred from the folder's files, as on the command line. Nothing is uploaded.">
+          Open a project folder…
+          <input id="folder" type="file" webkitdirectory multiple hidden>
+        </label>
+        <label>Theme
+          <select id="theme"><option value="">Automatic</option></select>
+        </label>
+        <label>GitHub repository
+          <input id="repo" type="text" placeholder="owner/name" spellcheck="false" autocomplete="off" size="16">
+        </label>
+        <label>Preview
+          <select id="scheme">
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </label>
+      </div>
+    </header>
+
+    <main>
+      <section class="pane" aria-label="Your README">
+        <div class="pane-head">
+          <span id="readme-path" class="path">README.md</span>
+          <span id="project" class="muted"></span>
+        </div>
+        <textarea id="source" spellcheck="false" aria-label="README source"></textarea>
+      </section>
+
+      <section class="pane" aria-label="Result">
+        <div class="pane-head">
+          <div role="tablist">
+            <button role="tab" data-tab="styled" aria-selected="true">Styled</button>
+            <button role="tab" data-tab="original" aria-selected="false">Original</button>
+            <button role="tab" data-tab="diff" aria-selected="false">Diff</button>
+            <button role="tab" data-tab="markdown" aria-selected="false">Markdown</button>
+            <button role="tab" data-tab="details" aria-selected="false">Details</button>
+          </div>
+          <span id="status" class="status" role="status">Loading the engine…</span>
+        </div>
+        <div class="views">
+          <iframe id="preview" data-view="styled original" sandbox="allow-scripts" title="Rendered README"></iframe>
+          <pre id="diff" data-view="diff" class="code" hidden></pre>
+          <div data-view="markdown" class="markdown-view" hidden>
+            <div class="actions">
+              <button id="copy" type="button">Copy</button>
+              <button id="download" type="button">Download README.md</button>
+            </div>
+            <pre id="output" class="code"></pre>
+          </div>
+          <div id="details" data-view="details" class="details" hidden></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="bar muted">
+      <span>Everything runs in this page: your README and project files are never uploaded. The preview loads
+        badge images from shields.io, as GitHub does.</span>
+      <a href="https://github.com/Alssndr0/readme-style">Source</a>
+    </footer>
+  </body>
+</html>

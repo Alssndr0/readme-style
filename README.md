@@ -89,6 +89,12 @@ centered header with arXiv, project page, Hugging Face, Colab, Python and licens
 from links the README already had), a folded table of contents and a folded news section, and turns
 a "**Note:**" into an alert. Nothing else in the file changes.
 
+## Try it in a browser
+
+`cargo xtask playground` builds a playground that runs the same engine, compiled to WebAssembly, in
+your browser: paste a README or open a project folder, pick a theme, and see the result rendered, the
+diff and the evidence for each badge. Files never leave the page.
+
 ## What it changes
 
 | Feature | What happens | Comes from |
@@ -218,7 +224,7 @@ repos:
 ## Roadmap
 
 - Generated SVG banners per theme, in light and dark variants.
-- A browser playground built from the same engine compiled to WebAssembly.
+- The playground published as a web page.
 - A gallery of before and after on well-known repositories.
 
 ## Contributing

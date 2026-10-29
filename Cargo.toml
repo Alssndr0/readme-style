@@ -104,5 +104,13 @@ codegen-units = 1
 lto = "thin"
 strip = true
 
+# The browser playground's WebAssembly module: smaller to download, fast enough to style a
+# README as you type.
+[profile.wasm]
+inherits = "release"
+opt-level = "s"
+lto = true
+panic = "abort"
+
 [profile.dev.package."*"]
 opt-level = 1

@@ -1,0 +1,43 @@
+[package]
+name = "readme-style-wasm"
+description = "readme-style compiled to WebAssembly, for the browser playground."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+# cdylib for the browser, rlib for the native tests.
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+readme-style-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+similar.workspace = true
+
+# The workspace lints, except that `unsafe_code` is denied rather than forbidden: exporting a
+# function to JavaScript takes `#[unsafe(no_mangle)]`, allowed on those exports only.
+[lints.rust]
+unsafe_code = "deny"
+missing_debug_implementations = "warn"
+unreachable_pub = "warn"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+too_many_lines = "allow"
+struct_excessive_bools = "allow"
+assert_is_empty = "allow"
+similar_names = "allow"
+dbg_macro = "warn"
+print_stdout = "warn"
+print_stderr = "warn"
+todo = "warn"
+unwrap_used = "warn"

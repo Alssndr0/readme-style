@@ -59,15 +59,21 @@ jobs:
       - run: cargo check --workspace --all-targets --locked
 
   wasm:
-    name: Engine builds for WebAssembly
+    name: Playground (WebAssembly)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
+          components: clippy
       - uses: Swatinem/rust-cache@v2
-      - run: cargo check -p readme-style-core --target wasm32-unknown-unknown --locked
+      - run: cargo clippy -p readme-style-wasm --target wasm32-unknown-unknown --locked -- -D warnings
+      - run: cargo xtask playground
+      - uses: actions/upload-artifact@v4
+        with:
+          name: playground
+          path: target/playground
 
   properties:
     name: Property tests (20 000 READMEs)

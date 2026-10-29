@@ -942,6 +942,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "readme-style-wasm"
+version = "0.2.0"
+dependencies = [
+ "readme-style-core",
+ "serde",
+ "serde_json",
+ "similar 3.2.1",
+]
+
+[[package]]
 name = "regex"
 version = "1.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
