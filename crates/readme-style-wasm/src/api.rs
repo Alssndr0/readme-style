@@ -98,9 +98,11 @@ impl StyleResponse {
     }
 }
 
-/// `text` with in-memory paths shown as paths inside the project.
+/// `text` with in-memory paths shown as paths inside the project. (The native tests also run
+/// on Windows, where paths are joined with `\`.)
 fn local(text: &str) -> String {
     text.replace(&format!("{ROOT}/"), "")
+        .replace(&format!("{ROOT}\\"), "")
 }
 
 /// A path inside the project, or `None` for anything that could point outside it.

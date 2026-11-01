@@ -12,7 +12,6 @@
 pub mod api;
 
 use std::cell::RefCell;
-use std::sync::Once;
 
 thread_local! {
     static INPUT: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
@@ -76,16 +75,20 @@ pub extern "C" fn panic_message() -> usize {
 }
 
 fn respond(handler: impl FnOnce(&str) -> String) -> usize {
-    static HOOK: Once = Once::new();
-    HOOK.call_once(|| {
-        std::panic::set_hook(Box::new(|info| {
-            PANIC.with(|p| {
-                if let Ok(mut message) = p.try_borrow_mut() {
-                    *message = info.to_string();
-                }
-            });
-        }));
-    });
+    // Only in the browser: natively, the hook would hide the messages of failing tests.
+    #[cfg(target_family = "wasm")]
+    {
+        static HOOK: std::sync::Once = std::sync::Once::new();
+        HOOK.call_once(|| {
+            std::panic::set_hook(Box::new(|info| {
+                PANIC.with(|p| {
+                    if let Ok(mut message) = p.try_borrow_mut() {
+                        *message = info.to_string();
+                    }
+                });
+            }));
+        });
+    }
     let request = INPUT.with_borrow(|bytes| String::from_utf8_lossy(bytes).into_owned());
     answer(handler(&request))
 }

@@ -98,7 +98,7 @@ pub(crate) struct SuggestArgs {
     pub(crate) model: Option<String>,
 
     /// API base URL, such as `http://127.0.0.1:8000/v1` for a local OpenAI-compatible server;
-    /// the [ai] configuration table is then ignored
+    /// the `[ai]` configuration table is then ignored
     #[arg(long, value_name = "URL")]
     pub(crate) base_url: Option<String>,
 
